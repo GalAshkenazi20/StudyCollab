@@ -18,3 +18,50 @@ node_modules/
 .DS_Store
 .idea/
 .vscode/
+
+# Android Studio
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Android
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Gradle
+.gradle/
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+
+# Android Studio Navigation editor temp files
+.navigation/
+
+# Android Studio captures folder
+captures/
+
+# Keystore files
+*.jks
+*.keystore
+
+# Google Services (Firebase)
+google-services.json
+
+# Proguard
+proguard/
+
+# Log Files
+*.log
+
+# Android Profiling
+*.hprof
