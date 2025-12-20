@@ -1,0 +1,70 @@
+classDiagram
+%% --- Android Client Side ---
+    namespace Android_App {
+        class AuthViewModel {
+            +User? loggedInUser
+            +Boolean isLoading
+            +String? errorMessage
+            +login(email: String, pass: String)
+            +logout()
+        }
+
+        class ApiService {
+            <<interface>>
+            +loginUser(loginRequest)
+            +getStudentCourses(studentId)
+            +getStudyGroups(studentId)
+        }
+
+        class AppNavigation {
+            +navController
+            +navigate(route)
+        }
+    }
+
+%% --- Shared Data Models / Backend Schemas ---
+    namespace Backend_Database {
+        class User {
+            +String id
+            +String email
+            +String role
+            +String fullName
+            +String avatarUrl
+            +login()
+            +register()
+        }
+
+        class Course {
+            +String code
+            +String name
+            +String semester
+            +getAssignments()
+        }
+
+        class CourseMembership {
+            +String userId
+            +String courseId
+            +String status
+            +String role
+        }
+
+        class StudyGroup {
+            +String id
+            +String courseId
+            +List~User~ members
+            +addMember(user)
+        }
+    }
+
+%% --- Relationships ---
+
+%% Android Logic Connections
+    AuthViewModel --> ApiService : uses
+    AuthViewModel --> User : manages state of
+    AppNavigation --> AuthViewModel : observes
+
+%% Database/Entity Connections
+    User "1" -- "*" CourseMembership : has >
+    Course "1" -- "*" CourseMembership : includes >
+    StudyGroup "*" -- "*" User : includes members >
+    StudyGroup --> Course : belongs to >

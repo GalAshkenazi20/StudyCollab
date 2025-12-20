@@ -1,0 +1,45 @@
+graph TD
+%% Define Styles for Start/End and Decisions
+    classDef startend fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef decision fill:#ff9,stroke:#333,stroke-width:2px,rhombus;
+classDef process fill:#fff,stroke:#333,stroke-width:1px;
+
+subgraph User_Actions [User (Student)]
+Start((Start)):::startend
+ClickCreate[Click 'Create Group' Button]:::process
+FillForm[Fill Group Details<br/>(Name, Course, Desc)]:::process
+SubmitClick[Click 'Create' Button]:::process
+ViewSuccess[View Group Screen]:::process
+end
+
+subgraph System_Logic [System / Backend]
+DisplayForm[Display Creation Form]:::process
+Validate{Input Valid?}:::decision
+ShowError[Show Error Message]:::process
+SaveDB[Save Group to Database]:::process
+SaveMember[Add User as Admin]:::process
+DBSuccess{Save Successful?}:::decision
+ShowDBError[Show Connection Error]:::process
+end
+
+%% Flow Connections
+Start --> ClickCreate
+ClickCreate --> DisplayForm
+DisplayForm --> FillForm
+FillForm --> SubmitClick
+SubmitClick --> Validate
+
+%% Validation Logic
+Validate -- No --> ShowError
+ShowError --> FillForm
+Validate -- Yes --> SaveDB
+
+%% Database Logic
+SaveDB --> DBSuccess
+DBSuccess -- No --> ShowDBError
+ShowDBError --> FillForm
+DBSuccess -- Yes --> SaveMember
+SaveMember --> ViewSuccess
+
+%% End Node
+ViewSuccess --> Stop((End)):::startend
