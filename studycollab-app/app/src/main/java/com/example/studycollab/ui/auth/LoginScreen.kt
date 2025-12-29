@@ -16,10 +16,10 @@ fun LoginScreen(
 ) {
     val isLoading = viewModel.isLoading
     val errorMessage = viewModel.errorMessage
-    val loggedInUser = viewModel.loggedInUser
+    val currentUser = viewModel.currentUser
 
-    LaunchedEffect(loggedInUser) {
-        if (loggedInUser != null) {
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
             onLoginSuccess()
         }
     }

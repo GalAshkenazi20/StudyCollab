@@ -12,24 +12,49 @@ import kotlinx.coroutines.launch
 class AuthViewModel : ViewModel() {
     private val repository = AuthRepository()
 
-    // State variables that the UI listens to
+    // --- UI STATE ---
+    // Using 'private set' ensures only the ViewModel can modify these values
     var isLoading by mutableStateOf(false)
-    var errorMessage by mutableStateOf<String?>(null)
-    var loggedInUser by mutableStateOf<User?>(null)
+        private set
 
+    var errorMessage by mutableStateOf<String?>(null)
+        private set
+
+    // Renamed from 'loggedInUser' to 'currentUser' to fix the UI reference error
+    var currentUser by mutableStateOf<User?>(null)
+        private set
+
+    /**
+     * Attempts to log in a user using their email.
+     * On success, sets the 'currentUser' session object.
+     */
     fun login(email: String) {
+        if (email.isBlank()) {
+            errorMessage = "Please enter your university email"
+            return
+        }
+
         isLoading = true
         errorMessage = null
 
         viewModelScope.launch {
+            // repository.login calls the backend /auth/login endpoint
             val result = repository.login(email)
             isLoading = false
 
             result.onSuccess { user ->
-                loggedInUser = user
+                // This 'user' object contains the MongoDB _id
+                currentUser = user
             }.onFailure {
                 errorMessage = "Login failed: ${it.message}"
             }
         }
+    }
+
+    /**
+     * Clears the session and logs the user out.
+     */
+    fun logout() {
+        currentUser = null
     }
 }
