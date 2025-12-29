@@ -1,10 +1,10 @@
-import mongoose from "mongoose";
+const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
   role: { type: String, enum: ["student", "lecturer", "ta", "admin"], required: true },
   university: {
     provider: { type: String, required: true },
-    externalUserId: { type: String, required: true, unique: true },
+    externalUserId: { type: String, required: true, unique: true }, // e.g., Student ID
     email: { type: String, required: true, unique: true },
   },
   profile: {
@@ -14,4 +14,4 @@ const UserSchema = new mongoose.Schema({
   settings: { type: Object }
 }, { timestamps: true });
 
-export default mongoose.model("User", UserSchema);
+module.exports = mongoose.model("User", UserSchema);

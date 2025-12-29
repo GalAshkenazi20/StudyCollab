@@ -1,38 +1,49 @@
 const express = require('express');
 const router = express.Router();
 const StudyGroup = require('../models/StudyGroup');
-// const Conversation = require('../models/Conversation'); // נצטרך את זה בהמשך ליצירת צ'אט
 
-// 1. פתיחת קבוצה חדשה
-// תרחיש: סטודנט לוחץ "פתח קבוצה" -> הופך למנהל אוטומטית
+// 1. Create a New Study Group
+// Scenario: A student fills in details, selects classmates, and clicks "Create Group"
 router.post('/create', async (req, res) => {
-    const { groupName, courseId, creatorId, description, purpose } = req.body;
+    // Included memberIds to allow adding classmates selected in the CreateGroupScreen
+    const { groupName, courseId, creatorId, description, purpose, memberIds } = req.body;
 
     try {
-        // שלב א': יצירת אובייקט הקבוצה
+        // Prepare initial member list - the creator is assigned the 'admin' role
+        const initialMembers = [{
+            userId: creatorId,
+            role: 'admin',
+            status: 'active',
+            joinedAt: new Date()
+        }];
+
+        // Add other students invited from the selection list in the app
+        if (memberIds && Array.isArray(memberIds)) {
+            memberIds.forEach(id => {
+                // Prevent duplicating the creator in the members list
+                if (id !== creatorId) {
+                    initialMembers.push({
+                        userId: id,
+                        role: 'student',
+                        status: 'active',
+                        joinedAt: new Date()
+                    });
+                }
+            });
+        }
+
         const newGroup = new StudyGroup({
             name: groupName,
             courseId: courseId,
-            description: description,
-            purpose: purpose || 'general', // לפי ה-Use Case
-            members: [{
-                userId: creatorId,
-                role: 'admin', // המגדיר הוא המנהל
-                status: 'active',
-                joinedAt: new Date()
-            }]
+            description: description || "",
+            purpose: purpose || 'general',
+            members: initialMembers
         });
-
-        // הערה: כאן בעתיד תוסיף לוגיקה ליצירת מסמך ב-conversations
-        // const newChat = await Conversation.create({ ... });
-        // newGroup.chatId = newChat._id;
 
         const savedGroup = await newGroup.save();
 
-        res.status(201).json({
-            message: "Group created successfully",
-            group: savedGroup
-        });
+        // Return the saved object directly so the Android app can process it
+        res.status(201).json(savedGroup);
 
     } catch (error) {
         console.error("Error creating group:", error);
@@ -40,44 +51,50 @@ router.post('/create', async (req, res) => {
     }
 });
 
-// 2. הוספת משתתפים לקבוצה
-// תרחיש: מנהל הקבוצה בוחר סטודנטים ולוחץ "הוסף"
+// 2. Get All Groups for a Specific User
+// This is the critical missing route needed for StudyGroupScreen to display real data
+router.get('/user/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        // Find groups where the userId exists within the members array
+        const groups = await StudyGroup.find({ "members.userId": userId })
+            .populate('courseId'); // Populate full course details if needed
+
+        res.json(groups);
+    } catch (error) {
+        console.error("Error fetching user groups:", error);
+        res.status(500).json({ message: "Failed to fetch groups", error: error.message });
+    }
+});
+
+// 3. Add Members to an Existing Group
 router.post('/add-members', async (req, res) => {
-    const { groupId, newMemberIds, requesterId } = req.body; 
-    // requesterId = מי שמבצע את הבקשה (כדי לוודא שהוא אדמין אם צריך)
+    const { groupId, newMemberIds } = req.body;
 
     try {
         const group = await StudyGroup.findById(groupId);
         if (!group) return res.status(404).json({ message: "Group not found" });
 
-        // בדיקה אופציונלית: האם המבקש הוא חבר בקבוצה/מנהל?
-        // כרגע נשאיר פתוח לפי הדרישה הפשוטה שלך
-
-        // סינון כפילויות
         const existingIds = group.members.map(m => m.userId.toString());
+        
         const membersToAdd = newMemberIds
             .filter(id => !existingIds.includes(id))
             .map(userId => ({
                 userId: userId,
                 role: 'student',
-                // אם רוצים לממש הזמנה: status: 'invited'
-                // אם רוצים הוספה ישירה (כמו בתיאור שלך): status: 'active'
                 status: 'active', 
                 joinedAt: new Date()
             }));
 
         if (membersToAdd.length === 0) {
-            return res.status(400).json({ message: "No new members to add (all exist)" });
+            return res.status(400).json({ message: "No new members to add" });
         }
 
-        // דחיפה למערך
         group.members.push(...membersToAdd);
         await group.save();
 
-        res.status(200).json({
-            message: `Successfully added ${membersToAdd.length} members`,
-            updatedGroup: group
-        });
+        res.status(200).json(group);
 
     } catch (error) {
         console.error("Error adding members:", error);

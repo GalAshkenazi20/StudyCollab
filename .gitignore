@@ -9,59 +9,43 @@ venv/
 # Node
 node_modules/
 
-# Env / secrets
+# Env / Secrets
 .env
 .env.*
 *.key
+*.jks
+*.keystore
+google-services.json
 
 # OS / IDE
 .DS_Store
-.idea/
 .vscode/
-
-# Android Studio
+.idea/
 *.iml
-.gradle
-/local.properties
-/.idea/
-.DS_Store
-/build
-/captures
+.navigation/
+captures/
+
+# Android Studio & Gradle
+# These are the most important for your Windows/WSL sync stability
+.gradle/
+build/
+/*/build/
+local.properties
+gradle-app.setting
 .externalNativeBuild
 .cxx
-local.properties
 
-# Android
+# Ensure the Gradle Wrapper itself is NOT ignored
+!gradle-wrapper.jar
+
+# Android Build Artifacts
 *.apk
 *.ap_
 *.aab
 *.dex
 *.class
 
-# Gradle
-.gradle/
-build/
-gradle-app.setting
-!gradle-wrapper.jar
-
-# Android Studio Navigation editor temp files
-.navigation/
-
-# Android Studio captures folder
-captures/
-
-# Keystore files
-*.jks
-*.keystore
-
-# Google Services (Firebase)
-google-services.json
-
-# Proguard
+# Proguard / Profiling / Logs
 proguard/
-
-# Log Files
-*.log
-
-# Android Profiling
 *.hprof
+*.log

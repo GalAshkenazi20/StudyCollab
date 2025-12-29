@@ -1,6 +1,7 @@
 package com.example.studycollab.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -11,10 +12,10 @@ import com.example.studycollab.ui.auth.AuthViewModel
 import com.example.studycollab.ui.auth.LoginScreen
 import com.example.studycollab.ui.chat.CreateGroupScreen
 import com.example.studycollab.ui.chat.StudyGroupScreen
+import com.example.studycollab.ui.chat.StudyGroupViewModel
 import com.example.studycollab.ui.courses.CourseListScreen
 import com.example.studycollab.ui.home.HomeScreen
 import com.example.studycollab.ui.tasks.TimetableScreen
-// Import other screens as you create them...
 
 @Composable
 fun AppNavigation() {
@@ -26,16 +27,38 @@ fun AppNavigation() {
         composable(Screen.Login.route) {
             val authViewModel: AuthViewModel = viewModel()
             LoginScreen(authViewModel) {
-                navController.navigate(Screen.Home.route) { popUpTo(Screen.Login.route) { inclusive = true } }
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Login.route) { inclusive = true }
+                }
             }
         }
 
         // Home
         composable(Screen.Home.route) { HomeScreen(navController) }
 
-        // Study Groups
-        composable(Screen.StudyGroups.route) { StudyGroupScreen(navController) }
-        composable(Screen.CreateStudyGroup.route) { CreateGroupScreen { navController.popBackStack() } }
+        // --- SHARED VIEWMODEL SECTION ---
+        // We initialize the ViewModel outside the individual routes so it persists
+        // while navigating between StudyGroupScreen and CreateGroupScreen.
+
+        composable(Screen.StudyGroups.route) {
+            val groupViewModel: StudyGroupViewModel = viewModel()
+            StudyGroupScreen(
+                navController = navController,
+                viewModel = groupViewModel
+            )
+        }
+
+        composable(Screen.CreateStudyGroup.route) {
+            // By calling viewModel() here, Compose finds the existing instance
+            // created in the StudyGroups route above.
+            val groupViewModel: StudyGroupViewModel = viewModel()
+
+            CreateGroupScreen(
+                viewModel = groupViewModel,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+        // --------------------------------
 
         // Courses
         composable(Screen.Courses.route) { CourseListScreen(navController) }
@@ -45,17 +68,14 @@ fun AppNavigation() {
             route = Screen.CourseDetail.route,
             arguments = listOf(navArgument("courseName") { type = NavType.StringType })
         ) { backStackEntry ->
-            // In a real app, you'd use this name to fetch data
             val courseName = backStackEntry.arguments?.getString("courseName") ?: "Course"
-            // You can create a simple generic screen for this:
-            // CourseDetailScreen(navController, courseName)
         }
 
         // Timetable
         composable(Screen.Timetable.route) { TimetableScreen(navController) }
 
-        // Add Chat/Notifications placeholders here...
-        composable(Screen.Chats.route) { /* Create ChatListScreen similar to others */ }
-        composable(Screen.Notifications.route) { /* Create NotificationScreen similar to others */ }
+        // Placeholders
+        composable(Screen.Chats.route) { /* ChatListScreen */ }
+        composable(Screen.Notifications.route) { /* NotificationScreen */ }
     }
 }
