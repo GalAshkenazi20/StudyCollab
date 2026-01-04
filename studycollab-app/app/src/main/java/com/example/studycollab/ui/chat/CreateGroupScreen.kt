@@ -11,6 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.studycollab.utils.UserSession
+import kotlinx.coroutines.delay // <-- לייבוא של delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -18,17 +20,23 @@ fun CreateGroupScreen(
     viewModel: StudyGroupViewModel,
     onBackClick: () -> Unit
 ) {
-    // 1. Initial Data Fetch: Triggered when the screen opens
+
+    val currentUserId = UserSession.UserSession.userId
+
     LaunchedEffect(Unit) {
-        // Replace "USER_ID" with actual user session ID later
-        viewModel.fetchMyCourses("USER_ID")
+        if (currentUserId != null) {
+            viewModel.fetchMyCourses(currentUserId)
+        } else {
+
+            println("Error: No user logged in CreateGroupScreen")
+        }
     }
 
-    // 2. Navigation Logic: Pop back automatically when successMessage is updated
     LaunchedEffect(viewModel.successMessage) {
         if (viewModel.successMessage != null) {
-            // Optional: Close screen after a delay or immediately
-            // onBackClick()
+            delay(1000)
+            onBackClick()
+            viewModel.successMessage = null
         }
     }
 
@@ -86,7 +94,7 @@ fun CreateGroupScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // --- FIELD 3: CLASSMATE SELECTION (Checkbox List) ---
+        // --- FIELD 3: CLASSMATE SELECTION ---
         Text("Invite Classmates from this Course:", style = MaterialTheme.typography.titleSmall)
 
         Card(
@@ -97,16 +105,21 @@ fun CreateGroupScreen(
             colors = CardDefaults.cardColors(containerColor = Color(0xFFFAFAFA)),
             border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.LightGray)
         ) {
-            if (viewModel.availableClassmates.isEmpty()) {
+            // סינון: הסתרת המשתמש הנוכחי מהרשימה
+            val filteredClassmates = viewModel.availableClassmates.filter { student ->
+                student._id != currentUserId
+            }
+
+            if (filteredClassmates.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        text = if (viewModel.selectedCourse == null) "Select a course first" else "No classmates found",
+                        text = if (viewModel.selectedCourse == null) "Select a course first" else "No other classmates found",
                         color = Color.Gray
                     )
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(4.dp)) {
-                    items(viewModel.availableClassmates) { student ->
+                    items(filteredClassmates) { student ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -159,7 +172,6 @@ fun CreateGroupScreen(
             Button(
                 onClick = { viewModel.createGroup() },
                 modifier = Modifier.fillMaxWidth(),
-                // Button is only enabled if Name is typed and Course is picked
                 enabled = viewModel.groupName.isNotBlank() && viewModel.selectedCourse != null
             ) {
                 Text("Create Group")

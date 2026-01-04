@@ -11,14 +11,12 @@ const studyGroupSchema = new mongoose.Schema({
         ref: 'Course',
         required: true
     },
-    // נדרש לפי ה-Use Case diagram (Set group purpose)
     purpose: {
         type: String,
         enum: ['assignment_submission', 'exam_study', 'general', 'other'],
         default: 'general'
     },
     description: String,
-    // קישור לקולקציית השיחות (לפי מבנה התיקיות שלך)
     chatId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Conversation' 
@@ -34,11 +32,10 @@ const studyGroupSchema = new mongoose.Schema({
             enum: ['admin', 'student'], 
             default: 'student'
         },
-        // תוספת קריטית לפי FR-4.2 (הזמנה ואישור)
         status: {
             type: String,
             enum: ['active', 'pending', 'invited'], 
-            default: 'active' // ברירת מחדל לפיילוט: מוסיף ישר
+            default: 'active' 
         },
         joinedAt: {
             type: Date,

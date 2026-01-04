@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.studycollab.data.model.User
 import com.example.studycollab.data.repository.AuthRepository
+import com.example.studycollab.utils.UserSession
 import kotlinx.coroutines.launch
 
 class AuthViewModel : ViewModel() {
@@ -38,13 +39,19 @@ class AuthViewModel : ViewModel() {
         errorMessage = null
 
         viewModelScope.launch {
-            // repository.login calls the backend /auth/login endpoint
             val result = repository.login(email)
             isLoading = false
 
             result.onSuccess { user ->
-                // This 'user' object contains the MongoDB _id
                 currentUser = user
+
+                // --- הנה התוספת הקריטית! ---
+                // אנחנו שומרים את ה-ID בזיכרון הגלובלי כדי ששאר המסכים יוכלו להשתמש בו
+                // שים לב: אם במודל שלך זה נקרא id ולא _id, תשנה בהתאם
+                UserSession.UserSession.userId = user._id
+                UserSession.UserSession.userName = user.profile.fullName
+                // ---------------------------
+
             }.onFailure {
                 errorMessage = "Login failed: ${it.message}"
             }
