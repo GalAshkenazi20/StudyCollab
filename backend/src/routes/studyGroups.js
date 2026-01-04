@@ -58,8 +58,8 @@ router.get('/user/:userId', async (req, res) => {
         const { userId } = req.params;
         
         // Find groups where the userId exists within the members array
-        const groups = await StudyGroup.find({ "members.userId": userId })
-            .populate('courseId'); // Populate full course details if needed
+        const groups = await StudyGroup.find({ "members.userId": userId });
+            // .populate('courseId'); // Populate full course details if needed
 
         res.json(groups);
     } catch (error) {

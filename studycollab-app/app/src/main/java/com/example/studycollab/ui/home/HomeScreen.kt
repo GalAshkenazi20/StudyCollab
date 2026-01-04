@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.studycollab.ui.Screen
+import com.example.studycollab.utils.UserSession
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,7 +42,12 @@ fun HomeScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(16.dp) // Space between buttons
         ) {
             Spacer(modifier = Modifier.height(20.dp))
-            Text("Welcome, Student!", style = MaterialTheme.typography.headlineMedium)
+            val displayName = UserSession.UserSession.userName ?: "Student"
+
+            Text(
+                text = "Welcome, $displayName",
+                style = MaterialTheme.typography.headlineMedium
+            )
             Spacer(modifier = Modifier.height(20.dp))
 
             // The 5 Main Buttons
