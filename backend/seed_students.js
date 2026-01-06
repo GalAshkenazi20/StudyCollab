@@ -1,8 +1,8 @@
+require('dotenv').config(); // 👈 Load Atlas URI from .env
 const mongoose = require('mongoose');
 
 // --- SCHEMAS ---
 
-// 1. User Schema
 const UserSchema = new mongoose.Schema({
   role: { type: String, required: true },
   university: {
@@ -17,26 +17,22 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model("User", UserSchema);
 
-// 2. Course Schema
 const CourseSchema = new mongoose.Schema({
     name: { type: String, required: true },
     code: { type: String, required: true },
     semester: { type: String, required: true }
 });
-// Ensure unique combo of code + semester
 CourseSchema.index({ code: 1, semester: 1 }, { unique: true }); 
 const Course = mongoose.model("Course", CourseSchema);
 
-// 3. Course Membership Schema (The link between Student and Course)
 const CourseMembershipSchema = new mongoose.Schema({
     courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
     userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     role:     { type: String, default: 'student' },
     status:   { type: String, default: 'active' }
 });
-// Ensure a student isn't added to the same course twice
 CourseMembershipSchema.index({ courseId: 1, userId: 1 }, { unique: true });
-const CourseMembership = mongoose.model("CourseMembership", CourseMembershipSchema);
+const CourseMembership = mongoose.model("CourseMembership", CourseMembershipSchema, "course_memberships");
 
 
 // --- DATA TO SEED ---
@@ -56,15 +52,17 @@ const coursesData = [
 
 // --- MAIN LOGIC ---
 
-mongoose.connect('mongodb://127.0.0.1:27017/studycollab')
+// Use the Atlas URI from .env, or fallback to local if .env is missing
+const dbURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/studycollab';
+
+mongoose.connect(dbURI)
   .then(async () => {
-    console.log('✅ Connected to MongoDB.');
+    console.log('✅ Connected to MongoDB Atlas for Seeding.');
 
     // 1. Upsert Students
     console.log('--- Seeding Students ---');
     const studentDocs = [];
     for (const s of studentsData) {
-        // findOneAndUpdate with upsert: true creates it if it doesn't exist
         const user = await User.findOneAndUpdate(
             { "university.email": s.email }, 
             {
@@ -101,13 +99,13 @@ mongoose.connect('mongodb://127.0.0.1:27017/studycollab')
                 { upsert: true, new: true }
             );
         }
-        console.log(`🔗 Registered ${student.profile.fullName} to all 3 courses.`);
+        console.log(`🔗 Registered ${student.profile.fullName} to all courses.`);
     }
 
-    console.log('\n🎉 Seed Complete!');
+    console.log('\n🎉 Seed Complete on Atlas!');
     process.exit();
   })
   .catch(err => {
-    console.error('❌ Error:', err);
+    console.error('❌ Seed Error:', err);
     process.exit(1);
   });

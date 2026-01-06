@@ -1,15 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const StudyGroup = require('../models/StudyGroup');
+const Notification = require('../models/Notification');
 
 // 1. Create a New Study Group
-// Scenario: A student fills in details, selects classmates, and clicks "Create Group"
 router.post('/create', async (req, res) => {
-    // Included memberIds to allow adding classmates selected in the CreateGroupScreen
-    const { groupName, courseId, creatorId, description, purpose, memberIds } = req.body;
+    const { groupName, courseId, creatorId, purpose, memberIds } = req.body;
 
     try {
-        // Prepare initial member list - the creator is assigned the 'admin' role
         const initialMembers = [{
             userId: creatorId,
             role: 'admin',
@@ -17,10 +15,8 @@ router.post('/create', async (req, res) => {
             joinedAt: new Date()
         }];
 
-        // Add other students invited from the selection list in the app
         if (memberIds && Array.isArray(memberIds)) {
             memberIds.forEach(id => {
-                // Prevent duplicating the creator in the members list
                 if (id !== creatorId) {
                     initialMembers.push({
                         userId: id,
@@ -35,15 +31,34 @@ router.post('/create', async (req, res) => {
         const newGroup = new StudyGroup({
             name: groupName,
             courseId: courseId,
-            description: description || "",
             purpose: purpose || 'general',
             members: initialMembers
         });
 
         const savedGroup = await newGroup.save();
 
-        // Return the saved object directly so the Android app can process it
-        res.status(201).json(savedGroup);
+        // RE-ENABLED POPULATE for the response
+        const populatedGroup = await StudyGroup.findById(savedGroup._id)
+            .populate('members.userId', 'profile role university')
+            .populate('courseId', 'name');
+
+        // Notification logic
+        if (memberIds && memberIds.length > 0) {
+            const notifications = memberIds
+                .filter(id => id !== creatorId)
+                .map(userId => ({
+                    userId: userId,
+                    title: "New Study Group!",
+                    message: `You've been invited to join ${groupName}.`,
+                    type: "group_invite",
+                    relatedId: savedGroup._id,
+                    dedupeKey: `invite_${savedGroup._id}_${userId}`
+                }));
+
+            await Notification.insertMany(notifications, { ordered: false });
+        }
+
+        res.status(201).json(populatedGroup);
 
     } catch (error) {
         console.error("Error creating group:", error);
@@ -52,14 +67,14 @@ router.post('/create', async (req, res) => {
 });
 
 // 2. Get All Groups for a Specific User
-// This is the critical missing route needed for StudyGroupScreen to display real data
 router.get('/user/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        
-        // Find groups where the userId exists within the members array
-        const groups = await StudyGroup.find({ "members.userId": userId });
-            // .populate('courseId'); // Populate full course details if needed
+
+        // RE-ENABLED POPULATE to get names and profile data
+        const groups = await StudyGroup.find({ "members.userId": userId })
+            .populate('members.userId', 'profile role university')
+            .populate('courseId', 'name');
 
         res.json(groups);
     } catch (error) {
@@ -68,37 +83,51 @@ router.get('/user/:userId', async (req, res) => {
     }
 });
 
-// 3. Add Members to an Existing Group
-router.post('/add-members', async (req, res) => {
-    const { groupId, newMemberIds } = req.body;
-
+// 4. Delete a Group (Includes Notifications)
+router.delete('/:groupId', async (req, res) => {
     try {
-        const group = await StudyGroup.findById(groupId);
+        const { userId } = req.body; 
+        const group = await StudyGroup.findById(req.params.groupId);
+
         if (!group) return res.status(404).json({ message: "Group not found" });
 
-        const existingIds = group.members.map(m => m.userId.toString());
-        
-        const membersToAdd = newMemberIds
-            .filter(id => !existingIds.includes(id))
-            .map(userId => ({
-                userId: userId,
-                role: 'student',
-                status: 'active', 
-                joinedAt: new Date()
-            }));
-
-        if (membersToAdd.length === 0) {
-            return res.status(400).json({ message: "No new members to add" });
+        const requester = group.members.find(m => m.userId.toString() === userId);
+        if (!requester || requester.role !== 'admin') {
+            return res.status(403).json({ message: "Only admins can delete groups" });
         }
 
-        group.members.push(...membersToAdd);
-        await group.save();
+        const otherMembers = group.members.filter(m => m.userId.toString() !== userId);
+        if (otherMembers.length > 0) {
+            const notifications = otherMembers.map(member => ({
+                userId: member.userId,
+                title: "Group Deleted",
+                message: `The study group "${group.name}" has been closed by the admin.`,
+                type: "group_deleted",
+                relatedId: group._id,
+                dedupeKey: `deleted_${group._id}_${member.userId}_${Date.now()}`
+            }));
+            await Notification.insertMany(notifications, { ordered: false });
+        }
 
-        res.status(200).json(group);
-
+        await StudyGroup.findByIdAndDelete(req.params.groupId);
+        res.json({ message: "Group deleted successfully" });
     } catch (error) {
-        console.error("Error adding members:", error);
-        res.status(500).json({ message: "Failed to add members", error: error.message });
+        res.status(500).json({ message: "Deletion failed", error: error.message });
+    }
+});
+
+// 5. Get participants for a specific group (Populated)
+router.get('/:groupId/participants', async (req, res) => {
+    try {
+        const group = await StudyGroup.findById(req.params.groupId)
+            .populate('members.userId', 'profile role university');
+
+        if (!group) return res.status(404).json({ message: "Group not found" });
+
+        res.json(group.members);
+    } catch (error) {
+        console.error("Error fetching participants:", error);
+        res.status(500).json({ message: "Server error" });
     }
 });
 

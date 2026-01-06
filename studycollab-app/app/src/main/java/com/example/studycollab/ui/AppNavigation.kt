@@ -11,10 +11,14 @@ import androidx.navigation.navArgument
 import com.example.studycollab.ui.auth.AuthViewModel
 import com.example.studycollab.ui.auth.LoginScreen
 import com.example.studycollab.ui.chat.CreateGroupScreen
+import com.example.studycollab.ui.chat.GroupDetailsScreen
+import com.example.studycollab.ui.chat.ParticipantsScreen
 import com.example.studycollab.ui.chat.StudyGroupScreen
 import com.example.studycollab.ui.chat.StudyGroupViewModel
 import com.example.studycollab.ui.courses.CourseListScreen
 import com.example.studycollab.ui.home.HomeScreen
+import com.example.studycollab.ui.notifications.NotificationScreen
+import com.example.studycollab.ui.notifications.NotificationViewModel
 import com.example.studycollab.ui.tasks.TimetableScreen
 
 @Composable
@@ -33,37 +37,58 @@ fun AppNavigation() {
             }
         }
 
-        // Home
-        composable(Screen.Home.route) { HomeScreen(navController) }
-
-        // --- SHARED VIEWMODEL SECTION ---
-        // We initialize the ViewModel outside the individual routes so it persists
-        // while navigating between StudyGroupScreen and CreateGroupScreen.
-
-        composable(Screen.StudyGroups.route) {
-            val groupViewModel: StudyGroupViewModel = viewModel()
-            StudyGroupScreen(
-                navController = navController,
-                viewModel = groupViewModel
-            )
+        // --- SHARED NOTIFICATION VIEWMODEL ---
+        // We define this here so it can be passed to both Home and Notifications
+        composable(Screen.Home.route) {
+            val notifViewModel: NotificationViewModel = viewModel()
+            HomeScreen(navController, notifViewModel)
         }
 
-        composable(Screen.CreateStudyGroup.route) {
-            // By calling viewModel() here, Compose finds the existing instance
-            // created in the StudyGroups route above.
-            val groupViewModel: StudyGroupViewModel = viewModel()
-
-            CreateGroupScreen(
-                viewModel = groupViewModel,
+        composable(Screen.Notifications.route) {
+            val notifViewModel: NotificationViewModel = viewModel()
+            NotificationScreen(
+                viewModel = notifViewModel,
                 onBackClick = { navController.popBackStack() }
             )
         }
-        // --------------------------------
 
-        // Courses
+        // --- SHARED STUDY GROUP VIEWMODEL ---
+        composable(Screen.StudyGroups.route) {
+            val groupViewModel: StudyGroupViewModel = viewModel()
+            StudyGroupScreen(navController = navController, viewModel = groupViewModel)
+        }
+
+        composable(Screen.CreateStudyGroup.route) {
+            val groupViewModel: StudyGroupViewModel = viewModel()
+            CreateGroupScreen(viewModel = groupViewModel, onBackClick = { navController.popBackStack() })
+        }
+
+
+        // Add this to your NavHost in AppNavigation.kt
+        composable(
+            route = "group_details/{groupId}",
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+            val groupViewModel: StudyGroupViewModel = viewModel()
+
+            // We will create this screen next
+            GroupDetailsScreen(
+                groupId = groupId,
+                viewModel = groupViewModel,
+                navController = navController
+            )
+        }
+
+        // In AppNavigation.kt NavHost
+        composable("participants/{groupId}") { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("groupId") ?: ""
+            ParticipantsScreen(id, viewModel(), navController)
+        }
+
+        // --- OTHER ROUTES ---
         composable(Screen.Courses.route) { CourseListScreen(navController) }
 
-        // Course Detail (Dynamic Route)
         composable(
             route = Screen.CourseDetail.route,
             arguments = listOf(navArgument("courseName") { type = NavType.StringType })
@@ -71,11 +96,7 @@ fun AppNavigation() {
             val courseName = backStackEntry.arguments?.getString("courseName") ?: "Course"
         }
 
-        // Timetable
         composable(Screen.Timetable.route) { TimetableScreen(navController) }
-
-        // Placeholders
         composable(Screen.Chats.route) { /* ChatListScreen */ }
-        composable(Screen.Notifications.route) { /* NotificationScreen */ }
     }
 }

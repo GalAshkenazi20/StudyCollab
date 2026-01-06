@@ -100,11 +100,11 @@ class StudyGroupViewModel : ViewModel() {
             errorMessage = "Error: You must be logged in."
             return
         }
-
+        val participantIds = selectedStudents.map { it._id }.toMutableList()
         viewModelScope.launch {
             isLoading = true
 
-            val result = repository.createGroup(groupName, course.id, currentUserId, purpose)
+            val result = repository.createGroup(groupName, course.id, currentUserId, purpose, participantIds)
 
             result.onSuccess {
                 successMessage = "Group Created!"
@@ -116,6 +116,25 @@ class StudyGroupViewModel : ViewModel() {
             }.onFailure {
                 errorMessage = it.message
                 println("Error creating group: ${it.message}")
+            }
+            isLoading = false
+        }
+    }
+
+    fun deleteGroup(groupId: String, onComplete: (Boolean) -> Unit) {
+        val currentUserId = UserSession.UserSession.userId ?: return
+
+        viewModelScope.launch {
+            isLoading = true
+            val result = repository.deleteGroup(groupId, currentUserId)
+
+            result.onSuccess {
+                // Remove the group from the local list so the UI updates immediately
+                myGroups.removeAll { it._id == groupId }
+                onComplete(true)
+            }.onFailure {
+                errorMessage = it.message
+                onComplete(false)
             }
             isLoading = false
         }

@@ -16,11 +16,6 @@ const studyGroupSchema = new mongoose.Schema({
         enum: ['assignment_submission', 'exam_study', 'general', 'other'],
         default: 'general'
     },
-    description: String,
-    chatId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Conversation' 
-    },
     members: [{
         userId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -48,4 +43,4 @@ const studyGroupSchema = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('StudyGroup', studyGroupSchema);
+module.exports = mongoose.model('StudyGroup', studyGroupSchema, "study_groups");

@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.studycollab.data.model.getCourseName
 //import com.example.studycollab.UserSession
 import com.example.studycollab.ui.Screen
 import com.example.studycollab.utils.UserSession
@@ -33,24 +34,21 @@ fun StudyGroupScreen(
     navController: NavController,
     viewModel: StudyGroupViewModel = viewModel()
 ) {
-    // 1. משתנים לניהול המגירה (Drawer)
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope() // נדרש כדי לפתוח את המגירה בצורה חלקה (אנימציה)
 
-    // טעינת נתונים ראשונית
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(Unit) {
         viewModel.loadInitialData()
     }
 
-    // 2. עטיפת המסך כולו ב-ModalNavigationDrawer
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            // --- תוכן התפריט הצדדי ---
+
             ModalDrawerSheet {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // כותרת התפריט (השם של המשתמש)
                 val userName = UserSession.UserSession.userName ?: "Guest"
                 Text(
                     text = "Hello, $userName",
@@ -61,24 +59,23 @@ fun StudyGroupScreen(
 
                 HorizontalDivider()
 
-                // כפתור פרופיל (דוגמה)
+
                 NavigationDrawerItem(
                     label = { Text("My Profile") },
                     selected = false,
                     icon = { Icon(Icons.Default.Person, contentDescription = null) },
-                    onClick = { /* ניווט לפרופיל */ }
+                    onClick = { }
                 )
 
-                // כפתור התנתקות (Logout)
                 NavigationDrawerItem(
                     label = { Text("Logout") },
                     selected = false,
                     icon = { Icon(Icons.Default.ExitToApp, contentDescription = null) },
                     onClick = {
-                        // לוגיקה של התנתקות
+
                         scope.launch {
                             drawerState.close()
-                            // כאן אפשר להוסיף ניווט למסך Login
+
                             // navController.navigate(Screen.Login.route) { popUpTo(0) }
                         }
                     }
@@ -165,7 +162,7 @@ fun StudyGroupScreen(
                     ) {
                         items(viewModel.myGroups) { group ->
                             StudyGroupCard(group = group) {
-                                // navController.navigate("group_chat/${group._id}")
+                                navController.navigate("group_details/${group._id}")
                             }
                         }
                     }
@@ -207,7 +204,7 @@ fun StudyGroupCard(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Course: ${group.courseId}",
+                    text = "Course: ${group.getCourseName()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
