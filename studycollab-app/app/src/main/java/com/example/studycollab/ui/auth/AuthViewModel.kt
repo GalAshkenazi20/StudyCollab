@@ -29,9 +29,10 @@ class AuthViewModel : ViewModel() {
      * Attempts to log in a user using their email.
      * On success, sets the 'currentUser' session object.
      */
-    fun login(email: String) {
-        if (email.isBlank()) {
-            errorMessage = "Please enter your university email"
+    // Change the login function to accept the password
+    fun login(email: String, password: String) {
+        if (email.isBlank() || password.isBlank()) {
+            errorMessage = "Please enter both email and password"
             return
         }
 
@@ -39,19 +40,14 @@ class AuthViewModel : ViewModel() {
         errorMessage = null
 
         viewModelScope.launch {
-            val result = repository.login(email)
+            // Pass both email and password to the repository
+            val result = repository.login(email, password)
             isLoading = false
 
             result.onSuccess { user ->
                 currentUser = user
-
-                // --- הנה התוספת הקריטית! ---
-                // אנחנו שומרים את ה-ID בזיכרון הגלובלי כדי ששאר המסכים יוכלו להשתמש בו
-                // שים לב: אם במודל שלך זה נקרא id ולא _id, תשנה בהתאם
                 UserSession.UserSession.userId = user._id
                 UserSession.UserSession.userName = user.profile.fullName
-                // ---------------------------
-
             }.onFailure {
                 errorMessage = "Login failed: ${it.message}"
             }

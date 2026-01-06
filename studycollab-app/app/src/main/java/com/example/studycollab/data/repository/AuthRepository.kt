@@ -6,10 +6,14 @@ import com.example.studycollab.data.remote.ApiClient
 class AuthRepository {
     private val api = ApiClient.apiService
 
-    suspend fun login(email: String): Result<User> {
+    // Update signature to include password
+    suspend fun login(email: String, password: String): Result<User> {
         return try {
-            // We send the email in a map, matching what your backend expects
-            val payload = mapOf("email" to email)
+            // Add password to the payload map
+            val payload = mapOf(
+                "email" to email,
+                "password" to password
+            )
             val user = api.loginUser(payload)
             Result.success(user)
         } catch (e: Exception) {

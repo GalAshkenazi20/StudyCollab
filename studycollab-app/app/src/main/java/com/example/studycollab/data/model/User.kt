@@ -15,5 +15,6 @@ data class UserProfile(
 
 data class UniversityDetails(
     val email: String,
-    val externalUserId: String
+    val externalUserId: String,
+    val provider: String
 )
