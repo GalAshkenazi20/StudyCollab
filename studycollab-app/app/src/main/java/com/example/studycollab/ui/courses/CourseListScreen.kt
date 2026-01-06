@@ -18,6 +18,7 @@ import com.example.studycollab.data.model.Course
 import com.example.studycollab.ui.Screen
 import com.example.studycollab.ui.auth.AuthViewModel
 import com.example.studycollab.ui.chat.StudyGroupViewModel
+import com.example.studycollab.utils.UserSession
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,7 +29,8 @@ fun CourseListScreen(
     authViewModel: AuthViewModel = viewModel()
 ) {
     // 1. GET THE REAL ID: Retrieve the MongoDB _id from the Auth session
-    val userId = authViewModel.currentUser?._id
+//    val userId = authViewModel.currentUser?._id
+    val userId = UserSession.UserSession.userId
 
     // 2. FETCH DATA: Use the real ID instead of a placeholder
     LaunchedEffect(userId) {

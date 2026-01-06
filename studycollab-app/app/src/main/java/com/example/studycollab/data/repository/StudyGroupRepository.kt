@@ -41,15 +41,32 @@ class StudyGroupRepository(private val api: ApiService) {
         name: String,
         courseId: String,
         creatorId: String,
-        purpose: String
+        purpose: String,
+        memberIds: List<String>
     ): Result<StudyGroup> {
         return try {
-            val request = CreateGroupRequest(name, courseId, creatorId, purpose, "")
+            val request = CreateGroupRequest(name, courseId, creatorId, purpose, memberIds)
             val response = api.createGroup(request)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {
                 Result.failure(Exception("Server Error: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // In StudyGroupRepository.kt
+
+    suspend fun deleteGroup(groupId: String, userId: String): Result<Unit> {
+        return try {
+
+            val response = api.deleteGroup(groupId, mapOf("userId" to userId))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete group"))
             }
         } catch (e: Exception) {
             Result.failure(e)
