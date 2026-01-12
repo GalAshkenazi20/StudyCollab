@@ -27,6 +27,12 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            password = ""
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -55,8 +61,13 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+
         if (errorMessage != null) {
-            Text(text = errorMessage, color = Color.Red, modifier = Modifier.padding(bottom = 8.dp))
+            Text(
+                text = "Email / password incorrect",
+                color = Color.Red,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
         }
 
         if (isLoading) {

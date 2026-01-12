@@ -10,7 +10,10 @@ data class StudyGroup(
     val purpose: String, // "general", "exam_study", etc.
     val description: String?,
     val members: List<GroupMember>
-)
+){
+    val course: String
+        get() = getCourseName()
+}
 
 data class GroupMember(
     val userId: JsonElement,
