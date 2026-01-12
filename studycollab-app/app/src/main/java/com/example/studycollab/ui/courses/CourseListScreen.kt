@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.studycollab.data.model.Course
-import com.example.studycollab.ui.Screen
 import com.example.studycollab.ui.auth.AuthViewModel
 import com.example.studycollab.ui.chat.StudyGroupViewModel
 import com.example.studycollab.utils.UserSession
@@ -29,7 +28,6 @@ fun CourseListScreen(
     authViewModel: AuthViewModel = viewModel()
 ) {
     // 1. GET THE REAL ID: Retrieve the MongoDB _id from the Auth session
-//    val userId = authViewModel.currentUser?._id
     val userId = UserSession.UserSession.userId
 
     // 2. FETCH DATA: Use the real ID instead of a placeholder
@@ -88,7 +86,12 @@ fun CourseListScreen(
 @Composable
 fun CourseItem(course: Course, navController: NavController) {
     Card(
-        onClick = { navController.navigate(Screen.CourseDetail.createRoute(course.name)) },
+        // --- כאן השינוי החשוב ---
+        // אנו שולחים את שם הקורס וגם את הקוד שלו לנתיב החדש
+        // וודא שב-AppNavigation ה-route מוגדר כ: "course_detail/{name}/{code}"
+        onClick = {
+            navController.navigate("course_detail/${course.name}/${course.code}")
+        },
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {

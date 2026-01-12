@@ -7,12 +7,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,14 +23,16 @@ fun GroupDetailsScreen(
     viewModel: StudyGroupViewModel,
     navController: NavController
 ) {
-    // TRIGGER: Ensure data is loaded when this screen opens
+    // TRIGGER: טעינת נתונים ראשונית במידה וחסרים
     LaunchedEffect(groupId) {
         viewModel.loadInitialData()
     }
 
+    // מציאת הקבוצה הנוכחית מתוך הרשימה ב-ViewModel
     val group = viewModel.myGroups.find { it._id == groupId }
     val currentUserId = UserSession.UserSession.userId
 
+    // לוגיקה לבדיקה האם המשתמש הנוכחי הוא Admin (לצורך כפתור המחיקה)
     val isAdmin = group?.members?.find { member ->
         val id = if (member.userId.isJsonPrimitive) {
             member.userId.asString
@@ -58,12 +55,12 @@ fun GroupDetailsScreen(
         }
     ) { padding ->
         if (group == null) {
-            // Loading State
+            // מצב טעינה (אם הקבוצה לא נמצאה עדיין)
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
-            // Success State
+            // תוכן המסך
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -72,22 +69,33 @@ fun GroupDetailsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
 
+                // כפתור למשתתפים
                 DashboardButton("👥 View Participants", Icons.Default.Person) {
-                     navController.navigate("participants/$groupId")
+                    navController.navigate("participants/$groupId")
                 }
 
+                // כפתור למשימות
                 DashboardButton("✅ Group Tasks", Icons.Default.CheckCircle) {
                     navController.navigate("group_tasks/$groupId")
                 }
 
+                // --- התיקון החשוב: Group Chat ---
                 DashboardButton("💬 Group Chat", Icons.AutoMirrored.Filled.Send) {
+                    // טריק הניווט הכפול:
+                    // 1. אנחנו מכניסים את רשימת הצ'אטים להיסטוריה
+                    // (וודא שהשם "chats" זהה ל-Screen.Chats.route שלך ב-AppNavigation)
+                    navController.navigate("chats")
+
+                    // 2. ומיד נכנסים לצ'אט הספציפי
                     navController.navigate("chat/${group._id}")
                 }
 
+                // כפתור לצ'אט עם מרצה (Placeholder)
                 DashboardButton("👨‍🏫 Chat with Lecturer", Icons.Default.Face) {
-                    // Logic for lecturer chat
+                    // Logic for lecturer chat implementation
                 }
 
+                // כפתור הגשה (רק אם מטרת הקבוצה היא הגשה)
                 if (group.purpose == "assignment_submission") {
                     Button(
                         onClick = { /* Submit logic */ },
@@ -101,6 +109,7 @@ fun GroupDetailsScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
+                // כפתור מחיקת קבוצה (רק למנהל)
                 if (isAdmin) {
                     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -143,7 +152,7 @@ fun GroupDetailsScreen(
     }
 }
 
-// THIS COMPONENT WAS MISSING FROM YOUR FILE
+// רכיב כפתור מעוצב לשימוש חוזר במסך
 @Composable
 fun DashboardButton(
     text: String,

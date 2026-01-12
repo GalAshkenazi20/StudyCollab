@@ -8,6 +8,7 @@ const studyGroupsRouter = require('./src/routes/studyGroups');
 const authRouter = require('./src/routes/auth');
 const coursesRouter = require('./src/routes/courses');
 const notificationsRouter = require('./src/routes/notifications');
+const messageRoutes = require('./src/routes/messages');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +35,7 @@ app.use('/api/groups', studyGroupsRouter);
 app.use('/api/courses', coursesRouter);
 app.use('/auth', authRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/messages', messageRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 API running on http://localhost:${PORT}`);
