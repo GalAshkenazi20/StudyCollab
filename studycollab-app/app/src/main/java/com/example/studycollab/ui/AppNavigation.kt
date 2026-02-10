@@ -17,14 +17,12 @@ fun AppNavigation() {
     val navController = rememberNavController()
 
     // --- SHARED VIEWMODELS ---
-    // Declaring these here allows state to persist across screens
     val studyViewModel: StudyGroupViewModel = viewModel()
     val assignmentViewModel: AssignmentViewModel = viewModel()
     val notifViewModel: NotificationViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = Screen.Login.route) {
 
-        // --- AUTH ---
         composable(Screen.Login.route) {
             LoginScreen(viewModel()) {
                 navController.navigate(Screen.Home.route) {
@@ -33,19 +31,13 @@ fun AppNavigation() {
             }
         }
 
-        // --- HOME & NOTIFICATIONS ---
-        composable(Screen.Home.route) {
-            HomeScreen(navController, notifViewModel)
-        }
+        composable(Screen.Home.route) { HomeScreen(navController, notifViewModel) }
 
         composable(Screen.Notifications.route) {
             NotificationScreen(viewModel = notifViewModel, onBackClick = { navController.popBackStack() })
         }
 
-        // --- STUDY GROUPS ---
-        composable(Screen.StudyGroups.route) {
-            StudyGroupScreen(navController, studyViewModel)
-        }
+        composable(Screen.StudyGroups.route) { StudyGroupScreen(navController, studyViewModel) }
 
         composable(Screen.CreateStudyGroup.route) {
             CreateGroupScreen(viewModel = studyViewModel, onBackClick = { navController.popBackStack() })
@@ -67,19 +59,30 @@ fun AppNavigation() {
             ParticipantsScreen(groupId, studyViewModel, navController)
         }
 
-        // --- TASKS & ASSIGNMENTS (FR-6) ---
+        // --- FIXED: GROUP TASKS (Passing missing groupId for Admin logic) ---
         composable(
             route = Screen.GroupTasks.route,
             arguments = listOf(navArgument("groupId") { type = NavType.StringType })
         ) { backStackEntry ->
             val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
 
-            // Safe extraction: finds the courseId even if the _id is a JsonObject
-            val group = studyViewModel.myGroups.find { it._id.toString().contains(groupId) }
+            // Strict matching: filters both sides to be alphanumeric only
+            val group = studyViewModel.myGroups.find { g ->
+                g._id.toString().filter { it.isLetterOrDigit() } == groupId.filter { it.isLetterOrDigit() }
+            }
+
+            // CLEAN COURSE ID: Ensures NO quotes or $oid wrappers are passed to TaskListScreen
             val courseId = group?.courseId?.toString()?.replace("\"", "")
                 ?.replace("{", "")?.replace("}", "")?.filter { it.isLetterOrDigit() } ?: ""
 
-            TaskListScreen(navController, courseId, assignmentViewModel)
+            // UPDATED: Passing groupId and studyViewModel so TaskListScreen can handle Admin buttons
+            TaskListScreen(
+                navController = navController,
+                courseId = courseId,
+                groupId = groupId,
+                viewModel = assignmentViewModel,
+                studyViewModel = studyViewModel
+            )
         }
 
         composable(
@@ -94,10 +97,7 @@ fun AppNavigation() {
             SubTaskDetailScreen(navController, groupId, assignmentId, assignmentViewModel, studyViewModel)
         }
 
-        // --- COURSES ---
-        composable(Screen.Courses.route) {
-            CourseListScreen(navController, studyViewModel)
-        }
+        composable(Screen.Courses.route) { CourseListScreen(navController, studyViewModel) }
 
         composable(
             route = Screen.CourseDetail.route,
@@ -111,7 +111,6 @@ fun AppNavigation() {
             CourseDetailScreen(navController, name, code, studyViewModel)
         }
 
-        // --- CHAT ---
         composable(
             route = Screen.ChatRoom.route,
             arguments = listOf(navArgument("groupId") { type = NavType.StringType })

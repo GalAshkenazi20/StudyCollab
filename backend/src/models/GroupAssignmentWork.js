@@ -20,4 +20,4 @@ const GroupAssignmentWorkSchema = new mongoose.Schema({
 // Align with unique index from setup_db.js
 GroupAssignmentWorkSchema.index({ assignmentId: 1, groupId: 1 }, { unique: true });
 
-module.exports = mongoose.model("GroupAssignmentWork", GroupAssignmentWorkSchema);
+module.exports = mongoose.model("GroupAssignmentWork", GroupAssignmentWorkSchema, 'group_assignment_works');
