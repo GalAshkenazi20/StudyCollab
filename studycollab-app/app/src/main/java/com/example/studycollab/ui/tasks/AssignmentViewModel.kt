@@ -10,6 +10,7 @@ import com.example.studycollab.data.model.GroupAssignmentWork
 import com.example.studycollab.data.remote.ApiClient
 import com.example.studycollab.utils.UserSession
 import kotlinx.coroutines.launch
+import android.util.Log
 
 class AssignmentViewModel : ViewModel() {
 
@@ -70,17 +71,43 @@ class AssignmentViewModel : ViewModel() {
     /**
      * Add a new sub-task. Only the Group Admin should call this.
      */
-    fun addSubTask(workId: String, title: String, assignedToId: String) {
+    fun addSubTask(workId: String, title: String, assignedToId: String, groupId: String, assignmentId: String) {
         val adminId = UserSession.userId ?: return
+
+        // DEBUG LOG: See if the function is triggered
+        Log.d("TaskDebug", "Starting addSubTask: workId=$workId, title=$title, group=$groupId")
+
         viewModelScope.launch {
-            val taskData = mapOf(
-                "title" to title,
-                "assignedTo" to assignedToId,
-                "adminId" to adminId
-            )
-            val response = ApiClient.apiService.addSubTask(workId, taskData)
-            if (response.isSuccessful) {
-                currentGroupWork = response.body()
+            isLoading = true
+            try {
+                val taskData = mapOf(
+                    "title" to title,
+                    "assignedTo" to assignedToId,
+                    "adminId" to adminId,
+                    "groupId" to groupId,
+                    "assignmentId" to assignmentId
+                )
+
+                // If workId is empty, we send it to the "new" initialization route
+                val targetId = workId.ifBlank { "new" }
+                Log.d("TaskDebug", "Sending POST to api/group-work/$targetId/subtasks")
+
+                val response = ApiClient.apiService.addSubTask(targetId, taskData)
+
+                if (response.isSuccessful && response.body() != null) {
+                    Log.d("TaskDebug", "SUCCESS: Task saved and state updated")
+                    currentGroupWork = response.body()
+                    errorMessage = null
+                } else {
+                    val errorMsg = "API Error: ${response.code()} - ${response.errorBody()?.string()}"
+                    Log.e("TaskDebug", errorMsg)
+                    errorMessage = errorMsg
+                }
+            } catch (e: Exception) {
+                Log.e("TaskDebug", "Network Exception: ${e.message}")
+                errorMessage = e.message
+            } finally {
+                isLoading = false
             }
         }
     }
