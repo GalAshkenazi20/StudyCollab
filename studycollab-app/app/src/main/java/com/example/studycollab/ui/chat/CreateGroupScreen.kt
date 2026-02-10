@@ -21,7 +21,7 @@ fun CreateGroupScreen(
     onBackClick: () -> Unit
 ) {
 
-    val currentUserId = UserSession.UserSession.userId
+    val currentUserId = UserSession.userId
 
     LaunchedEffect(Unit) {
         if (currentUserId != null) {

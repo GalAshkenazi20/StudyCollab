@@ -9,6 +9,8 @@ const authRouter = require('./src/routes/auth');
 const coursesRouter = require('./src/routes/courses');
 const notificationsRouter = require('./src/routes/notifications');
 const messageRoutes = require('./src/routes/messages');
+const assignmentsRouter = require('./src/routes/assignments');
+const groupWorkRouter = require('./src/routes/groupWork');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +38,8 @@ app.use('/api/courses', coursesRouter);
 app.use('/auth', authRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/messages', messageRoutes);
+app.use('/api/assignments', assignmentsRouter);
+app.use('/api/group-work', groupWorkRouter);
 
 app.listen(PORT, () => {
   console.log(`🚀 API running on http://localhost:${PORT}`);

@@ -66,7 +66,7 @@ fun HomeScreen(navController: NavController, notificationViewModel: Notification
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val displayName = UserSession.UserSession.userName ?: "Student"
+            val displayName = UserSession.userName ?: "Student"
             Text("Welcome, $displayName", style = MaterialTheme.typography.headlineMedium)
 
             MenuButton("Study Groups") { navController.navigate(Screen.StudyGroups.route) }

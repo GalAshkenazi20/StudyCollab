@@ -34,7 +34,7 @@ class NotificationViewModel : ViewModel() {
      * Fetches all notifications for the current user stored in UserSession.
      */
     fun loadNotifications() {
-        val userId = UserSession.UserSession.userId
+        val userId = UserSession.userId
         if (userId == null) {
             errorMessage = "User not logged in"
             return

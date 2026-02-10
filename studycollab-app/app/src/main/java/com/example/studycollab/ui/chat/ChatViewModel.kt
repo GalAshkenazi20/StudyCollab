@@ -42,7 +42,7 @@ class ChatViewModel(
     fun sendMessage() {
         val content = _messageText.value
         val groupId = currentGroupId ?: return
-        val currentUser = UserSession.UserSession
+        val currentUser = UserSession
 
         if (content.isBlank()) return
 

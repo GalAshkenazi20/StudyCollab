@@ -1,6 +1,5 @@
 package com.example.studycollab.utils
 
-class UserSession {
     object UserSession {
         var userId: String? = null
         var userName: String? = null
@@ -16,4 +15,3 @@ class UserSession {
             token = null
         }
     }
-}

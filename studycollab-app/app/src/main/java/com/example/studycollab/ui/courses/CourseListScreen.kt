@@ -12,10 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.studycollab.data.model.Course
-import com.example.studycollab.ui.auth.AuthViewModel
 import com.example.studycollab.ui.chat.StudyGroupViewModel
 import com.example.studycollab.utils.UserSession
 
@@ -23,14 +21,14 @@ import com.example.studycollab.utils.UserSession
 @Composable
 fun CourseListScreen(
     navController: NavController,
-    // Using the shared ViewModels to access real user data and course state
-    studyViewModel: StudyGroupViewModel = viewModel(),
-    authViewModel: AuthViewModel = viewModel()
+    // SHARED VIEWMODEL: Removed the '= viewModel()' default to ensure
+    // it must be passed from AppNavigation.
+    studyViewModel: StudyGroupViewModel
 ) {
-    // 1. GET THE REAL ID: Retrieve the MongoDB _id from the Auth session
-    val userId = UserSession.UserSession.userId
+    // 1. FIXED ACCESS: Changed UserSession.UserSession.userId to UserSession.userId
+    val userId = UserSession.userId
 
-    // 2. FETCH DATA: Use the real ID instead of a placeholder
+    // 2. FETCH DATA: Triggered when the screen opens
     LaunchedEffect(userId) {
         userId?.let {
             studyViewModel.fetchMyCourses(it)
@@ -40,7 +38,7 @@ fun CourseListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Courses") },
+                title = { Text("הקורסים שלי") }, // Switched to Hebrew to match your SRS
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -58,13 +56,13 @@ fun CourseListScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = if (userId == null) "User session not found." else "No courses found for your account.",
+                        text = if (userId == null) "שגיאה בטעינת משתמש" else "לא נמצאו קורסים המשויכים לחשבון שלך.",
                         color = Color.Gray
                     )
                     if (userId != null) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(onClick = { studyViewModel.fetchMyCourses(userId) }) {
-                            Text("Retry")
+                            Text("נסה שנית")
                         }
                     }
                 }
@@ -86,10 +84,8 @@ fun CourseListScreen(
 @Composable
 fun CourseItem(course: Course, navController: NavController) {
     Card(
-        // --- כאן השינוי החשוב ---
-        // אנו שולחים את שם הקורס וגם את הקוד שלו לנתיב החדש
-        // וודא שב-AppNavigation ה-route מוגדר כ: "course_detail/{name}/{code}"
         onClick = {
+            // Correctly passing both name and code as required by your AppNavigation route
             navController.navigate("course_detail/${course.name}/${course.code}")
         },
         modifier = Modifier.fillMaxWidth(),
@@ -100,13 +96,12 @@ fun CourseItem(course: Course, navController: NavController) {
                 .padding(16.dp)
                 .fillMaxWidth()
         ) {
-            // Displaying both Name and Code from the updated Course model
             Text(
                 text = course.name,
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = "Code: ${course.code} | ${course.semester}",
+                text = "קוד: ${course.code} | סמסטר ${course.semester}",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray
             )

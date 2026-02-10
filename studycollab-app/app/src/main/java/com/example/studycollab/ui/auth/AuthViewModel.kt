@@ -46,8 +46,8 @@ class AuthViewModel : ViewModel() {
 
             result.onSuccess { user ->
                 currentUser = user
-                UserSession.UserSession.userId = user._id
-                UserSession.UserSession.userName = user.profile.fullName
+                UserSession.userId = user._id
+                UserSession.userName = user.profile.fullName
             }.onFailure {
                 errorMessage = "Login failed: ${it.message}"
             }
