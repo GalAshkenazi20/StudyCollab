@@ -11,8 +11,11 @@ import com.example.studycollab.data.remote.ApiClient
 import com.example.studycollab.utils.UserSession
 import kotlinx.coroutines.launch
 import android.util.Log
+import com.example.studycollab.data.remote.ApiService
 
-class AssignmentViewModel : ViewModel() {
+class AssignmentViewModel(
+    private val apiService: ApiService = ApiClient.apiService
+) : ViewModel() {
 
     // State for the list of global assignments in a course
     var courseAssignments by mutableStateOf<List<Assignment>>(emptyList())
@@ -73,9 +76,7 @@ class AssignmentViewModel : ViewModel() {
      */
     fun addSubTask(workId: String, title: String, assignedToId: String, groupId: String, assignmentId: String) {
         val adminId = UserSession.userId ?: return
-
-        // DEBUG LOG: See if the function is triggered
-        Log.d("TaskDebug", "Starting addSubTask: workId=$workId, title=$title, group=$groupId")
+        Log.d("TaskDebug", "Starting addSubTask: workId=$workId, title=$title, group=$groupId, adminId=$adminId")
 
         viewModelScope.launch {
             isLoading = true
@@ -88,29 +89,37 @@ class AssignmentViewModel : ViewModel() {
                     "assignmentId" to assignmentId
                 )
 
-                // If workId is empty, we send it to the "new" initialization route
                 val targetId = workId.ifBlank { "new" }
+                Log.d("TaskDebug", "Request Body: $taskData")
                 Log.d("TaskDebug", "Sending POST to api/group-work/$targetId/subtasks")
 
                 val response = ApiClient.apiService.addSubTask(targetId, taskData)
 
+                Log.d("TaskDebug", "Response Code: ${response.code()}")
+                Log.d("TaskDebug", "Response Success: ${response.isSuccessful}")
+                Log.d("TaskDebug", "Response Body: ${response.body()}")
+                Log.d("TaskDebug", "Response Error: ${response.errorBody()?.string()}")
+
                 if (response.isSuccessful && response.body() != null) {
-                    Log.d("TaskDebug", "SUCCESS: Task saved and state updated")
+                    Log.d("TaskDebug", "SUCCESS: Task saved. New GroupWork state: ${response.body()}")
                     currentGroupWork = response.body()
                     errorMessage = null
                 } else {
-                    val errorMsg = "API Error: ${response.code()} - ${response.errorBody()?.string()}"
+                    val errorBody = response.errorBody()?.string() ?: "No error body"
+                    val errorMsg = "API Error: ${response.code()} - $errorBody"
                     Log.e("TaskDebug", errorMsg)
                     errorMessage = errorMsg
                 }
             } catch (e: Exception) {
-                Log.e("TaskDebug", "Network Exception: ${e.message}")
+                Log.e("TaskDebug", "Network Exception: ${e.message}", e)
+                Log.e("TaskDebug", "Stack trace:", e)
                 errorMessage = e.message
             } finally {
                 isLoading = false
             }
         }
     }
+
 
     /**
      * Mark a task as done. This moves status to 'pending_approval'.

@@ -30,9 +30,11 @@ class ChatViewModel(
     private var currentGroupId: String? = null
 
     // התחלת צ'אט: טעינה ורענון אוטומטי
-    fun startChat(groupId: String) {
+    fun startChat(groupId: String, poll: Boolean = true) {
         currentGroupId = groupId
-        startPollingMessages()
+        if (poll) {
+            startPollingMessages()
+        }
     }
 
     fun onMessageChange(text: String) {

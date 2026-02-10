@@ -29,15 +29,11 @@ fun TaskListScreen(
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
 
-    // Re-fetch assignments and initialize group work context on entry
     LaunchedEffect(courseId, groupId) {
         viewModel.fetchCourseAssignments(courseId)
-        // We fetch group work here to see if a workId already exists for this group
-        // This prevents the "Save but no show" issue by syncing the work state early
         viewModel.fetchGroupWork(groupId, "")
     }
 
-    // Determine Admin status for UI controls
     val currentUserId = UserSession.userId ?: ""
     val group = studyViewModel.myGroups.find { g ->
         g._id.toString().filter { it.isLetterOrDigit() } == groupId.filter { it.isLetterOrDigit() }
@@ -49,7 +45,7 @@ fun TaskListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Group Tasks") }, // Fixed: English headline
+                title = { Text("Group Tasks") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -72,32 +68,32 @@ fun TaskListScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (viewModel.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (viewModel.courseAssignments.isEmpty()) {
-                // Informative empty state
-                Text(
-                    text = "No assignments found for this course.\nAdmins can create group tasks using the + button.",
-                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.secondary
-                )
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(viewModel.courseAssignments) { assignment ->
-                        TaskAssignmentCard(
-                            title = assignment.title,
-                            dueDate = assignment.dueAt.toString(),
-                            onClick = {
-                                // Navigate to the specific sub-task breakdown
-                                navController.navigate(
-                                    Screen.GroupTaskDetails.createRoute(groupId, assignment.id)
-                                )
-                            }
-                        )
+                val tasks = viewModel.currentGroupWork?.subTasks ?: emptyList()
+
+                if (tasks.isEmpty()) {
+                    Text(
+                        text = "No tasks created yet.\nAdmins can create group tasks using the + button.",
+                        modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(tasks) { task ->
+                            TaskAssignmentCard(
+                                title = task.title,
+                                dueDate = task.status,
+                                onClick = {
+                                    // Navigate to task details if needed
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -107,13 +103,12 @@ fun TaskListScreen(
             AddTaskDialog(
                 onDismiss = { showCreateDialog = false },
                 onConfirm = { taskTitle ->
-                    // Pass the context so the backend can link the first task
                     viewModel.addSubTask(
                         workId = viewModel.currentGroupWork?.id ?: "",
                         title = taskTitle,
                         assignedToId = "",
-                        groupId = groupId,      // Mandatory for first-time creation
-                        assignmentId = "000000000000000000000000"        // Can be empty for general group tasks
+                        groupId = groupId,
+                        assignmentId = viewModel.currentGroupWork?.assignmentId ?: "000000000000000000000000"
                     )
                     showCreateDialog = false
                 }

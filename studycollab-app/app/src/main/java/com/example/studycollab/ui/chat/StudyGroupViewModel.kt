@@ -9,9 +9,11 @@ import com.example.studycollab.data.remote.ApiClient
 import com.example.studycollab.data.repository.StudyGroupRepository
 import kotlinx.coroutines.launch
 
-class StudyGroupViewModel : ViewModel() {
+class StudyGroupViewModel(
+    private val repository: StudyGroupRepository = StudyGroupRepository(ApiClient.apiService)
+) : ViewModel() {
     // Initialize repository
-    private val repository = StudyGroupRepository(ApiClient.apiService)
+//    private val repository = StudyGroupRepository(ApiClient.apiService)
 
     // UI States
     var isLoading by mutableStateOf(false)
