@@ -30,7 +30,7 @@ class StudyGroupViewModel : ViewModel() {
     val selectedStudents = mutableStateListOf<User>()
 
     fun loadInitialData() {
-        val currentUserId = UserSession.UserSession.userId
+        val currentUserId = UserSession.userId
         if (currentUserId != null) {
             fetchMyCourses(currentUserId)
             fetchGroups(currentUserId)
@@ -73,7 +73,7 @@ class StudyGroupViewModel : ViewModel() {
 
                 val classmates = repository.getStudentsInCourse(course.id)
 
-                val currentUserId = UserSession.UserSession.userId
+                val currentUserId = UserSession.userId
                 val filteredList = classmates.filter { student ->
                     student._id != currentUserId
                 }
@@ -94,7 +94,7 @@ class StudyGroupViewModel : ViewModel() {
     fun createGroup() {
         val course = selectedCourse ?: return
 
-        val currentUserId = UserSession.UserSession.userId
+        val currentUserId = UserSession.userId
 
         if (currentUserId == null) {
             errorMessage = "Error: You must be logged in."
@@ -122,7 +122,7 @@ class StudyGroupViewModel : ViewModel() {
     }
 
     fun deleteGroup(groupId: String, onComplete: (Boolean) -> Unit) {
-        val currentUserId = UserSession.UserSession.userId ?: return
+        val currentUserId = UserSession.userId ?: return
 
         viewModelScope.launch {
             isLoading = true

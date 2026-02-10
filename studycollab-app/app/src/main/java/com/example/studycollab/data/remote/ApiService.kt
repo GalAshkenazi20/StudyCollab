@@ -44,4 +44,34 @@ interface ApiService {
 
     @POST("api/messages")
     suspend fun sendMessage(@Body request: SendMessageRequest): Response<Message>
+
+    // --- Assignments ---
+    @GET("api/assignments/course/{courseId}")
+    suspend fun getCourseAssignments(@Path("courseId") courseId: String): Response<List<Assignment>>
+
+    // --- Group Work Breakdown ---
+    @GET("api/group-work/{groupId}/{assignmentId}")
+    suspend fun getGroupWork(
+        @Path("groupId") groupId: String,
+        @Path("assignmentId") assignmentId: String
+    ): Response<GroupAssignmentWork>
+
+    @POST("api/group-work/{workId}/subtasks")
+    suspend fun addSubTask(
+        @Path("workId") workId: String,
+        @Body taskData: Map<String, String> // title, assignedTo, adminId
+    ): Response<GroupAssignmentWork>
+
+    @PATCH("api/group-work/{workId}/subtasks/{subTaskId}/complete")
+    suspend fun completeSubTask(
+        @Path("workId") workId: String,
+        @Path("subTaskId") subTaskId: String
+    ): Response<GroupAssignmentWork>
+
+    @PATCH("api/group-work/{workId}/subtasks/{subTaskId}/approve")
+    suspend fun approveSubTask(
+        @Path("workId") workId: String,
+        @Path("subTaskId") subTaskId: String,
+        @Body adminData: Map<String, String> // adminId
+    ): Response<GroupAssignmentWork>
 }

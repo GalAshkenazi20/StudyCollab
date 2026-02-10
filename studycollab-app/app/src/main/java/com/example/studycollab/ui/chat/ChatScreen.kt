@@ -59,7 +59,7 @@ fun ChatScreen(
 
     val messages by viewModel.messages.collectAsState()
     val messageText by viewModel.messageText.collectAsState()
-    val currentUser = UserSession.UserSession
+    val currentUser = UserSession
 
     Scaffold(
         topBar = {
