@@ -39,8 +39,8 @@ class AuthViewModel : ViewModel() {
         isLoading = true
         errorMessage = null
 
+
         viewModelScope.launch {
-            // Pass both email and password to the repository
             val result = repository.login(email, password)
             isLoading = false
 
@@ -48,6 +48,8 @@ class AuthViewModel : ViewModel() {
                 currentUser = user
                 UserSession.userId = user._id
                 UserSession.userName = user.profile.fullName
+                // FIXED: Capture the role ("student" or "lecturer") from the backend
+                UserSession.userRole = user.role
             }.onFailure {
                 errorMessage = "Login failed: ${it.message}"
             }
