@@ -1,6 +1,11 @@
 package com.example.studycollab.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
@@ -8,9 +13,15 @@ import androidx.navigation.navArgument
 import com.example.studycollab.ui.auth.*
 import com.example.studycollab.ui.chat.*
 import com.example.studycollab.ui.courses.*
-import com.example.studycollab.ui.home.HomeScreen
+import com.example.studycollab.ui.dashboard.LecturerDashboardScreen
+import com.example.studycollab.ui.dashboard.StudentDashboardScreen
 import com.example.studycollab.ui.notifications.*
+import com.example.studycollab.ui.submissions.SubmissionTrackingScreen
+import com.example.studycollab.ui.submissions.SubmissionViewModel
 import com.example.studycollab.ui.tasks.*
+import com.example.studycollab.ui.scheduler.OfficeHoursSchedulerScreen
+import com.example.studycollab.ui.scheduler.StudentOfficeHoursScreen
+import com.example.studycollab.utils.UserSession
 
 @Composable
 fun AppNavigation() {
@@ -23,16 +34,61 @@ fun AppNavigation() {
 
     NavHost(navController = navController, startDestination = Screen.Login.route) {
 
+        // --- AUTHENTICATION ---
         composable(Screen.Login.route) {
             LoginScreen(viewModel()) {
-                navController.navigate(Screen.Home.route) {
+                // Redirect to the dynamic dashboard route after successful login
+                navController.navigate("dashboard") {
                     popUpTo(Screen.Login.route) { inclusive = true }
                 }
             }
         }
 
-        composable(Screen.Home.route) { HomeScreen(navController, notifViewModel) }
+        // --- DYNAMIC DASHBOARD (TRAFFIC CONTROLLER) ---
+        composable("dashboard") {
+            // Determines which dashboard to show based on the user's role saved in UserSession
+            when (UserSession.userRole) {
+                "lecturer" -> LecturerDashboardScreen(navController)
+                "student" -> StudentDashboardScreen(navController)
+                else -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Error: Unauthorized or unknown role")
+                    }
+                }
+            }
+        }
 
+        // --- LECTURER SPECIFIC ROUTES ---
+        composable("lecturer_courses") {
+            LecturerCoursesScreen(navController)
+        }
+
+        composable(
+            route = "submission_tracking/{assignmentId}/{assignmentTitle}",
+            arguments = listOf(
+                navArgument("assignmentId") { type = NavType.StringType },
+                navArgument("assignmentTitle") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("assignmentId") ?: ""
+            val title = backStackEntry.arguments?.getString("assignmentTitle") ?: ""
+            // Providing the specific SubmissionViewModel for grading logic
+            SubmissionTrackingScreen(navController, id, title, viewModel())
+        }
+
+        composable("office_hours_scheduler") {
+            OfficeHoursSchedulerScreen(navController)
+        }
+
+        composable(
+            route = "materials_management/{courseName}",
+            arguments = listOf(navArgument("courseName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val courseName = backStackEntry.arguments?.getString("courseName") ?: ""
+            MaterialsManagementScreen(navController, courseName)
+        }
+
+        // --- EXISTING STUDENT & SHARED COMPONENTS (REMAINING INTACT) ---
         composable(Screen.Notifications.route) {
             NotificationScreen(viewModel = notifViewModel, onBackClick = { navController.popBackStack() })
         }
@@ -59,17 +115,14 @@ fun AppNavigation() {
             ParticipantsScreen(groupId, studyViewModel, navController)
         }
 
-        // --- GROUP TASKS LIST ---
         composable(
             route = Screen.GroupTasks.route,
             arguments = listOf(navArgument("groupId") { type = NavType.StringType })
         ) { backStackEntry ->
             val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
-
             val group = studyViewModel.myGroups.find { g ->
                 g._id.toString().filter { it.isLetterOrDigit() } == groupId.filter { it.isLetterOrDigit() }
             }
-
             val courseId = group?.courseId?.toString()?.replace("\"", "")
                 ?.replace("{", "")?.replace("}", "")?.filter { it.isLetterOrDigit() } ?: ""
 
@@ -82,9 +135,7 @@ fun AppNavigation() {
             )
         }
 
-        // --- FIXED: GROUP TASK DETAIL (SHOW ONLY ONE TASK) ---
         composable(
-            // FIXED: Explicit route string to prevent destination mismatch crashes
             route = "group_task_details/{groupId}/{subTaskId}",
             arguments = listOf(
                 navArgument("groupId") { type = NavType.StringType },
@@ -93,8 +144,6 @@ fun AppNavigation() {
         ) { backStackEntry ->
             val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
             val subTaskId = backStackEntry.arguments?.getString("subTaskId") ?: ""
-
-            // Correctly passing subTaskId to filter the view
             SubTaskDetailScreen(
                 navController = navController,
                 groupId = groupId,
@@ -128,5 +177,10 @@ fun AppNavigation() {
 
         composable(Screen.Chats.route) { ChatListScreen(navController) }
         composable(Screen.Timetable.route) { TimetableScreen(navController) }
+
+        composable(Screen.BookOfficeHours.route) {
+            StudentOfficeHoursScreen(navController)
+        }
     }
+
 }

@@ -1,6 +1,7 @@
 package com.example.studycollab.data.remote
 
 import com.example.studycollab.data.model.*
+import com.example.studycollab.ui.scheduler.SlotInfo
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
@@ -82,4 +83,29 @@ interface ApiService {
         @Path("workId") workId: String,
         @Path("subTaskId") subTaskId: String
     ): Response<GroupAssignmentWork>
+
+    // In com.example.studycollab.data.remote.ApiService
+    @GET("submissions/assignment/{assignmentId}")
+    suspend fun getSubmissionsForAssignment(
+        @Path("assignmentId") assignmentId: String
+    ): Response<List<Submission>>
+
+    @PATCH("submissions/{submissionId}/grade")
+    suspend fun updateGrade(
+        @Path("submissionId") submissionId: String,
+        @Body data: Map<String, String>
+    ): Response<Submission>
+
+    // In com.example.studycollab.data.remote.ApiService
+    @GET("api/office-hours/lecturer/{lecturerId}")
+    suspend fun getOfficeHours(@Path("lecturerId") lecturerId: String): Response<List<SlotInfo>>
+
+    @POST("api/office-hours/create")
+    suspend fun createOfficeHour(@Body data: Map<String, String>): Response<SlotInfo>
+
+    @PATCH("api/office-hours/book/{slotId}")
+    suspend fun bookOfficeHour(@Path("slotId") slotId: String, @Body data: Map<String, String>): Response<Unit>
+
+    @DELETE("api/office-hours/{slotId}")
+    suspend fun deleteOfficeHour(@Path("slotId") slotId: String): Response<Unit>
 }
