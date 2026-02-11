@@ -122,11 +122,14 @@ class AssignmentViewModel(
 
 
     /**
-     * Mark a task as done. This moves status to 'pending_approval'.
+     * Mark a task as done. Now sends the userId to the backend for attribution.
      */
     fun completeTask(workId: String, subTaskId: String) {
+        val userId = UserSession.userId ?: return
         viewModelScope.launch {
-            val response = ApiClient.apiService.completeSubTask(workId, subTaskId)
+            // Passing userId in the body so the backend can record who finished it
+            val requestBody = mapOf("completedBy" to userId)
+            val response = ApiClient.apiService.completeSubTask(workId, subTaskId, requestBody)
             if (response.isSuccessful) {
                 currentGroupWork = response.body()
             }
@@ -146,4 +149,30 @@ class AssignmentViewModel(
             }
         }
     }
+
+    /**
+     * Delete a sub-task. Only the Group Admin should call this.
+     */
+    fun deleteSubTask(workId: String, subTaskId: String) {
+        val adminId = UserSession.userId ?: return
+        Log.d("TaskDebug", "Deleting task: workId=$workId, subTaskId=$subTaskId")
+
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                // Assuming your ApiService has this delete method
+                val response = ApiClient.apiService.deleteSubTask(workId, subTaskId)
+                if (response.isSuccessful) {
+                    currentGroupWork = response.body()
+                    errorMessage = null
+                } else {
+                    errorMessage = "Failed to delete task: ${response.code()}"
+                }
+            } catch (e: Exception) {
+                errorMessage = e.message
+            } finally {
+                isLoading = false
+            }
+        }
 }
+    }

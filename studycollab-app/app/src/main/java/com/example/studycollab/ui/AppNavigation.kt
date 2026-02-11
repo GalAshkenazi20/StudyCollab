@@ -59,23 +59,20 @@ fun AppNavigation() {
             ParticipantsScreen(groupId, studyViewModel, navController)
         }
 
-        // --- FIXED: GROUP TASKS (Passing missing groupId for Admin logic) ---
+        // --- GROUP TASKS LIST ---
         composable(
             route = Screen.GroupTasks.route,
             arguments = listOf(navArgument("groupId") { type = NavType.StringType })
         ) { backStackEntry ->
             val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
 
-            // Strict matching: filters both sides to be alphanumeric only
             val group = studyViewModel.myGroups.find { g ->
                 g._id.toString().filter { it.isLetterOrDigit() } == groupId.filter { it.isLetterOrDigit() }
             }
 
-            // CLEAN COURSE ID: Ensures NO quotes or $oid wrappers are passed to TaskListScreen
             val courseId = group?.courseId?.toString()?.replace("\"", "")
                 ?.replace("{", "")?.replace("}", "")?.filter { it.isLetterOrDigit() } ?: ""
 
-            // UPDATED: Passing groupId and studyViewModel so TaskListScreen can handle Admin buttons
             TaskListScreen(
                 navController = navController,
                 courseId = courseId,
@@ -85,16 +82,26 @@ fun AppNavigation() {
             )
         }
 
+        // --- FIXED: GROUP TASK DETAIL (SHOW ONLY ONE TASK) ---
         composable(
-            route = Screen.GroupTaskDetails.route,
+            // FIXED: Explicit route string to prevent destination mismatch crashes
+            route = "group_task_details/{groupId}/{subTaskId}",
             arguments = listOf(
                 navArgument("groupId") { type = NavType.StringType },
-                navArgument("assignmentId") { type = NavType.StringType }
+                navArgument("subTaskId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
-            val assignmentId = backStackEntry.arguments?.getString("assignmentId") ?: ""
-            SubTaskDetailScreen(navController, groupId, assignmentId, assignmentViewModel, studyViewModel)
+            val subTaskId = backStackEntry.arguments?.getString("subTaskId") ?: ""
+
+            // Correctly passing subTaskId to filter the view
+            SubTaskDetailScreen(
+                navController = navController,
+                groupId = groupId,
+                subTaskId = subTaskId,
+                viewModel = assignmentViewModel,
+                studyViewModel = studyViewModel
+            )
         }
 
         composable(Screen.Courses.route) { CourseListScreen(navController, studyViewModel) }

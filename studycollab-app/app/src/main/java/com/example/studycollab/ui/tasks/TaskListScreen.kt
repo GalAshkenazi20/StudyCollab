@@ -6,17 +6,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.studycollab.data.model.getParticipantId
-import com.example.studycollab.ui.Screen
 import com.example.studycollab.ui.chat.StudyGroupViewModel
 import com.example.studycollab.utils.UserSession
+import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,9 +33,13 @@ fun TaskListScreen(
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
 
+    // Placeholder ID for tasks not tied to a specific lecturer assignment
+    val defaultAssignmentId = "000000000000000000000000"
+
+    // Sync state on entry
     LaunchedEffect(courseId, groupId) {
         viewModel.fetchCourseAssignments(courseId)
-        viewModel.fetchGroupWork(groupId, "")
+        viewModel.fetchGroupWork(groupId, defaultAssignmentId)
     }
 
     val currentUserId = UserSession.userId ?: ""
@@ -88,9 +96,10 @@ fun TaskListScreen(
                         items(tasks) { task ->
                             TaskAssignmentCard(
                                 title = task.title,
-                                dueDate = task.status,
+                                status = task.status,
                                 onClick = {
-                                    // Navigate to task details if needed
+                                    // Pass the subTaskId to navigate to the detailed view
+                                    navController.navigate("group_task_details/$groupId/${task.id}")
                                 }
                             )
                         }
@@ -103,12 +112,13 @@ fun TaskListScreen(
             AddTaskDialog(
                 onDismiss = { showCreateDialog = false },
                 onConfirm = { taskTitle ->
+                    // FIXED: Passing all 5 parameters for correct DB saving
                     viewModel.addSubTask(
                         workId = viewModel.currentGroupWork?.id ?: "",
                         title = taskTitle,
                         assignedToId = "",
                         groupId = groupId,
-                        assignmentId = viewModel.currentGroupWork?.assignmentId ?: "000000000000000000000000"
+                        assignmentId = defaultAssignmentId
                     )
                     showCreateDialog = false
                 }
@@ -120,27 +130,60 @@ fun TaskListScreen(
 @Composable
 fun TaskAssignmentCard(
     title: String,
-    dueDate: String,
+    status: String,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(
+            containerColor = if (status == "completed")
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            else MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Deadline: $dueDate",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary
-            )
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        textDecoration = if (status == "completed") TextDecoration.LineThrough else TextDecoration.None
+                    ),
+                    color = if (status == "completed") Color.Gray else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Status Label Mapping
+                val statusText = when (status) {
+                    "pending_approval" -> "Waiting for Admin Approval"
+                    "completed" -> "Completed"
+                    else -> "In Progress"
+                }
+
+                val statusColor = when (status) {
+                    "completed" -> Color(0xFF4CAF50) // Green
+                    "pending_approval" -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.secondary
+                }
+
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                    color = statusColor
+                )
+            }
+
+            if (status == "completed") {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = "Done",
+                    tint = Color(0xFF4CAF50)
+                )
+            }
         }
     }
 }

@@ -5,9 +5,8 @@ sealed class Screen(val route: String) {
     object Home : Screen("home")
     object StudyGroups : Screen("study_groups")
     object CreateStudyGroup : Screen("create_study_group")
-    object Chats : Screen("chats") // Restored for your Home Screen
+    object Chats : Screen("chats")
 
-    // Routes with arguments use helper functions to prevent typos
     object GroupDetails : Screen("group_details/{groupId}") {
         fun createRoute(groupId: String) = "group_details/$groupId"
     }
@@ -20,9 +19,10 @@ sealed class Screen(val route: String) {
         fun createRoute(groupId: String) = "group_tasks/$groupId"
     }
 
-    object GroupTaskDetails : Screen("group_task_details/{groupId}/{assignmentId}") {
-        fun createRoute(groupId: String, assignmentId: String) =
-            "group_task_details/$groupId/$assignmentId"
+    // FIXED: Changed assignmentId to subTaskId to match logic and navigation
+    object GroupTaskDetails : Screen("group_task_details/{groupId}/{subTaskId}") {
+        fun createRoute(groupId: String, subTaskId: String) =
+            "group_task_details/$groupId/$subTaskId"
     }
 
     object ChatRoom : Screen("chat/{groupId}") {

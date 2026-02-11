@@ -59,13 +59,14 @@ interface ApiService {
     @POST("api/group-work/{workId}/subtasks")
     suspend fun addSubTask(
         @Path("workId") workId: String,
-        @Body taskData: Map<String, String> // title, assignedTo, adminId
+        @Body taskData: Map<String, String> // title, assignedTo, adminId, groupId, assignmentId
     ): Response<GroupAssignmentWork>
 
     @PATCH("api/group-work/{workId}/subtasks/{subTaskId}/complete")
     suspend fun completeSubTask(
         @Path("workId") workId: String,
-        @Path("subTaskId") subTaskId: String
+        @Path("subTaskId") subTaskId: String,
+        @Body body: Map<String, String> // ADD THIS to accept the userId/completedBy data
     ): Response<GroupAssignmentWork>
 
     @PATCH("api/group-work/{workId}/subtasks/{subTaskId}/approve")
@@ -73,5 +74,12 @@ interface ApiService {
         @Path("workId") workId: String,
         @Path("subTaskId") subTaskId: String,
         @Body adminData: Map<String, String> // adminId
+    ): Response<GroupAssignmentWork>
+
+    // --- ADDED: Sub-task Deletion (Admin Only) ---
+    @DELETE("api/group-work/{workId}/subtasks/{subTaskId}")
+    suspend fun deleteSubTask(
+        @Path("workId") workId: String,
+        @Path("subTaskId") subTaskId: String
     ): Response<GroupAssignmentWork>
 }
