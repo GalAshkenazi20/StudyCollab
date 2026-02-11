@@ -38,7 +38,7 @@ class AssignmentViewModel(
         viewModelScope.launch {
             isLoading = true
             try {
-                val response = ApiClient.apiService.getCourseAssignments(courseId)
+                val response = apiService.getCourseAssignments(courseId)
                 if (response.isSuccessful) {
                     courseAssignments = response.body() ?: emptyList()
                 } else {
@@ -59,7 +59,7 @@ class AssignmentViewModel(
         viewModelScope.launch {
             isLoading = true
             try {
-                val response = ApiClient.apiService.getGroupWork(groupId, assignmentId)
+                val response = apiService.getGroupWork(groupId, assignmentId)
                 if (response.isSuccessful) {
                     currentGroupWork = response.body()
                 }
@@ -93,7 +93,7 @@ class AssignmentViewModel(
                 Log.d("TaskDebug", "Request Body: $taskData")
                 Log.d("TaskDebug", "Sending POST to api/group-work/$targetId/subtasks")
 
-                val response = ApiClient.apiService.addSubTask(targetId, taskData)
+                val response = apiService.addSubTask(targetId, taskData)
 
                 Log.d("TaskDebug", "Response Code: ${response.code()}")
                 Log.d("TaskDebug", "Response Success: ${response.isSuccessful}")
@@ -129,7 +129,7 @@ class AssignmentViewModel(
         viewModelScope.launch {
             // Passing userId in the body so the backend can record who finished it
             val requestBody = mapOf("completedBy" to userId)
-            val response = ApiClient.apiService.completeSubTask(workId, subTaskId, requestBody)
+            val response = apiService.completeSubTask(workId, subTaskId, requestBody)
             if (response.isSuccessful) {
                 currentGroupWork = response.body()
             }
@@ -143,7 +143,7 @@ class AssignmentViewModel(
         val adminId = UserSession.userId ?: return
         viewModelScope.launch {
             val adminData = mapOf("adminId" to adminId)
-            val response = ApiClient.apiService.approveSubTask(workId, subTaskId, adminData)
+            val response = apiService.approveSubTask(workId, subTaskId, adminData)
             if (response.isSuccessful) {
                 currentGroupWork = response.body()
             }
@@ -161,7 +161,7 @@ class AssignmentViewModel(
             isLoading = true
             try {
                 // Assuming your ApiService has this delete method
-                val response = ApiClient.apiService.deleteSubTask(workId, subTaskId)
+                val response = apiService.deleteSubTask(workId, subTaskId)
                 if (response.isSuccessful) {
                     currentGroupWork = response.body()
                     errorMessage = null

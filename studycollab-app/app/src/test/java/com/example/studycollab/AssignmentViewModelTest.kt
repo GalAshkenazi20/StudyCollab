@@ -1,7 +1,11 @@
+package com.example.studycollab
+
 import com.example.studycollab.data.model.GroupAssignmentWork
 import com.example.studycollab.data.remote.ApiService
 import com.example.studycollab.ui.tasks.AssignmentViewModel
 import com.example.studycollab.utils.UserSession
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -10,9 +14,9 @@ import org.junit.Test
 import org.mockito.kotlin.*
 import retrofit2.Response
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class AssignmentViewModelTest {
 
-    // חובה להוסיף את ה-Rule הזה כדי לאפשר בדיקת Coroutines ב-ViewModel
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
@@ -21,9 +25,10 @@ class AssignmentViewModelTest {
         // 1. Arrange
         val mockApiService = mock<ApiService>()
 
-        // הזרקת ה-Mock לתוך ה-ViewModel (דורש את הרפקטורינג ב-ViewModel)
-        val viewModel = AssignmentViewModel(mockApiService)
+        // CRITICAL: Set userId BEFORE ViewModel init to pass guard clauses
         UserSession.userId = "admin1"
+
+        val viewModel = AssignmentViewModel(mockApiService)
 
         val mockWork = GroupAssignmentWork(
             id = "work1",
@@ -32,7 +37,7 @@ class AssignmentViewModelTest {
             subTasks = emptyList()
         )
 
-        // תיקון: שימוש ב-retrofit2.Response.success
+        // Use any() to match (String, Map) exactly as your ApiService requires
         whenever(mockApiService.addSubTask(any(), any()))
             .thenReturn(Response.success(mockWork))
 
@@ -46,7 +51,13 @@ class AssignmentViewModelTest {
         )
 
         // 3. Assert
-        assertNotNull(viewModel.currentGroupWork)
+        // This forces the launch{} block in the ViewModel to finish
+        advanceUntilIdle()
+
+        // Verify the mock was actually called
+        verify(mockApiService).addSubTask(eq("work1"), any())
+
+        assertNotNull("currentGroupWork should be updated by the API response", viewModel.currentGroupWork)
         assertEquals("work1", viewModel.currentGroupWork?.id)
     }
 }
