@@ -10,7 +10,9 @@ router.get('/:groupId/:assignmentId', async (req, res) => {
         let work = await GroupAssignmentWork.findOne({ 
             groupId: req.params.groupId, 
             assignmentId: req.params.assignmentId 
-        }).populate('subTasks.assignedTo', 'profile.fullName');
+        })
+        .populate('subTasks.assignedTo', 'profile.fullName')
+        .populate('subTasks.completedBy', 'profile.fullName'); // FIXED: Added population for names on load
 
         if (!work) {
             work = new GroupAssignmentWork({
@@ -27,21 +29,17 @@ router.get('/:groupId/:assignmentId', async (req, res) => {
     }
 });
 
-// 2. Add sub-tasks (Handles "new" work initialization)
+// 2. Add sub-tasks
 router.post('/:workId/subtasks', async (req, res) => {
     const { workId } = req.params;
     const { adminId, title, assignedTo, groupId, assignmentId } = req.body;
 
     try {
         let work;
-
-        // FIXED: Logic to handle initialization if workId is "new"
         if (workId === 'new') {
             if (!groupId || !assignmentId) {
-                return res.status(400).json({ message: "Missing groupId or assignmentId for new work initialization" });
+                return res.status(400).json({ message: "Missing groupId or assignmentId" });
             }
-            
-            // Use findOneAndUpdate with upsert to avoid duplicate key errors
             work = await GroupAssignmentWork.findOneAndUpdate(
                 { groupId, assignmentId },
                 { $setOnInsert: { subTasks: [] } },
@@ -54,15 +52,11 @@ router.post('/:workId/subtasks', async (req, res) => {
         if (!work) return res.status(404).json({ message: "Group work record not found" });
 
         const group = await StudyGroup.findById(work.groupId);
-        if (!group) return res.status(404).json({ message: "Study group not found" });
-
-        // Check if requester is admin
         const member = group.members.find(m => m.userId.toString() === adminId);
         if (!member || member.role !== 'admin') {
             return res.status(403).json({ message: "Only group admins can manage tasks" });
         }
 
-        // Add the task
         work.subTasks.push({ 
             title, 
             assignedTo: assignedTo || null, 
@@ -70,24 +64,37 @@ router.post('/:workId/subtasks', async (req, res) => {
         });
         
         await work.save();
-        res.json(work);
+        
+        // FIXED: Populate before sending back so names are visible immediately
+        const updatedWork = await GroupAssignmentWork.findById(work._id)
+            .populate('subTasks.assignedTo', 'profile.fullName')
+            .populate('subTasks.completedBy', 'profile.fullName');
+
+        res.json(updatedWork);
     } catch (error) {
         console.error("POST Subtask Error:", error);
-        res.status(500).json({ message: "Failed to add task", error: error.message });
+        res.status(500).json({ message: "Failed to add task" });
     }
 });
 
 // 3. Member marks task as done -> Pending Approval
 router.patch('/:workId/subtasks/:subTaskId/complete', async (req, res) => {
     try {
+        const { completedBy } = req.body;
         const work = await GroupAssignmentWork.findById(req.params.workId);
         const task = work.subTasks.id(req.params.subTaskId);
-        if (!task) return res.status(404).json({ message: "Task not found" });
-
+        
         task.status = 'pending_approval';
         task.completedAt = new Date();
+        task.completedBy = completedBy; 
+        
         await work.save();
-        res.json(work);
+        
+        const updatedWork = await GroupAssignmentWork.findById(work._id)
+            .populate('subTasks.completedBy', 'profile.fullName')
+            .populate('subTasks.assignedTo', 'profile.fullName');
+            
+        res.json(updatedWork);
     } catch (error) {
         res.status(500).json({ message: "Failed to update task" });
     }
@@ -110,9 +117,39 @@ router.patch('/:workId/subtasks/:subTaskId/approve', async (req, res) => {
 
         task.status = 'completed';
         await work.save();
-        res.json(work);
+
+        // FIXED: Populate here so the name doesn't disappear when task is approved
+        const updatedWork = await GroupAssignmentWork.findById(work._id)
+            .populate('subTasks.completedBy', 'profile.fullName')
+            .populate('subTasks.assignedTo', 'profile.fullName');
+
+        res.json(updatedWork);
     } catch (error) {
         res.status(500).json({ message: "Approval failed" });
+    }
+});
+
+// 5. Delete a sub-task (Admin Only)
+router.delete('/:workId/subtasks/:subTaskId', async (req, res) => {
+    try {
+        const { workId, subTaskId } = req.params;
+
+        const updatedWork = await GroupAssignmentWork.findByIdAndUpdate(
+            workId,
+            { $pull: { subTasks: { _id: subTaskId } } },
+            { new: true } 
+        )
+        .populate('subTasks.assignedTo', 'profile.fullName')
+        .populate('subTasks.completedBy', 'profile.fullName'); // FIXED: Maintain name consistency
+
+        if (!updatedWork) {
+            return res.status(404).json({ message: "Group work record not found" });
+        }
+
+        res.json(updatedWork);
+    } catch (error) {
+        console.error("Delete Task Error:", error);
+        res.status(500).json({ message: "Failed to delete task" });
     }
 });
 
