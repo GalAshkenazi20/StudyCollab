@@ -1,6 +1,6 @@
 package com.example.studycollab.ui.chat
 
-import MainDispatcherRule
+import com.example.studycollab.MainDispatcherRule
 import com.example.studycollab.data.model.Message
 import com.example.studycollab.data.repository.ChatRepository
 import com.example.studycollab.utils.UserSession
