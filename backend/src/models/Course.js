@@ -10,20 +10,27 @@ const CourseSchema = new mongoose.Schema({
     code: { type: String, required: true },
     semester: { type: String, required: true },
     
-    // Progress fields - Shared by all members of this instance
+    // --- הוספנו את החלק הזה למערכת שעות ---
+    schedule: {
+        day: { type: String, required: true }, // e.g., "Sunday", "Monday"
+        startTime: { type: String, required: true }, // e.g., "08:00"
+        endTime: { type: String, required: true },   // e.g., "11:00"
+        location: { type: String, default: "Building 3, Room 101" }
+    },
+    // ----------------------------------------
+
     totalLectures: { type: Number, default: 13 },
     completedLectures: { type: Number, default: 0 },
     topics: [TopicSchema],
     
-    // Global materials for this semester's course
     materials: [{
         title: String,
         url: String,
-        type: { type: String, enum: ['link', 'file', 'zoom'] }
+        type: { type: String, enum: ['link', 'file', 'zoom'] },
+        uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
     }]
 });
 
-// Unique index remains to prevent duplicate instances
 CourseSchema.index({ code: 1, semester: 1 }, { unique: true }); 
 
 module.exports = mongoose.model("Course", CourseSchema);

@@ -15,7 +15,6 @@ const CourseMembershipSchema = new mongoose.Schema({
     status: { type: String, default: 'active' }
 });
 
-// Prevents a student from being registered to the same course twice
 CourseMembershipSchema.index({ courseId: 1, userId: 1 }, { unique: true });
 
 module.exports = mongoose.model('CourseMembership', CourseMembershipSchema, "course_memberships");
