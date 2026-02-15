@@ -22,6 +22,7 @@ import com.example.studycollab.ui.tasks.*
 import com.example.studycollab.ui.scheduler.OfficeHoursSchedulerScreen
 import com.example.studycollab.ui.scheduler.StudentOfficeHoursScreen
 import com.example.studycollab.utils.UserSession
+import com.example.studycollab.ui.timetable.TimeTableScreen
 
 @Composable
 fun AppNavigation() {
@@ -176,7 +177,9 @@ fun AppNavigation() {
         }
 
         composable(Screen.Chats.route) { ChatListScreen(navController) }
-        composable(Screen.Timetable.route) { TimetableScreen(navController) }
+        composable(Screen.Timetable.route) {
+            TimeTableScreen(navController)
+        }
 
         composable(Screen.BookOfficeHours.route) {
             StudentOfficeHoursScreen(navController)
