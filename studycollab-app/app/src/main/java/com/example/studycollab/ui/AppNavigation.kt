@@ -16,6 +16,7 @@ import com.example.studycollab.ui.courses.*
 import com.example.studycollab.ui.dashboard.LecturerDashboardScreen
 import com.example.studycollab.ui.dashboard.StudentDashboardScreen
 import com.example.studycollab.ui.notifications.*
+import com.example.studycollab.ui.scheduler.LecturerOfficeHoursSlotsScreen
 import com.example.studycollab.ui.submissions.SubmissionTrackingScreen
 import com.example.studycollab.ui.submissions.SubmissionViewModel
 import com.example.studycollab.ui.tasks.*
@@ -43,6 +44,72 @@ fun AppNavigation() {
                     popUpTo(Screen.Login.route) { inclusive = true }
                 }
             }
+        }
+
+        // --- Lecturer: Syllabus Management ---
+        composable(
+            route = "syllabus_management/{courseId}/{courseName}",
+            arguments = listOf(
+                navArgument("courseId") { type = NavType.StringType },
+                navArgument("courseName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
+            val courseName = backStackEntry.arguments?.getString("courseName") ?: ""
+            SyllabusManagementScreen(navController, courseId, courseName)
+        }
+
+// --- Lecturer: Materials Management (update existing route to use courseId) ---
+// REPLACE the existing materials_management route with:
+        composable(
+            route = "materials_management/{courseId}/{courseName}",
+            arguments = listOf(
+                navArgument("courseId") { type = NavType.StringType },
+                navArgument("courseName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
+            val courseName = backStackEntry.arguments?.getString("courseName") ?: ""
+            MaterialsManagementScreen(navController, courseId, courseName)
+        }
+
+// --- Student: Assignments List ---
+        composable(
+            route = "student_assignments/{courseId}/{courseName}",
+            arguments = listOf(
+                navArgument("courseId") { type = NavType.StringType },
+                navArgument("courseName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
+            val courseName = backStackEntry.arguments?.getString("courseName") ?: ""
+            StudentAssignmentsScreen(navController, courseId, courseName)
+        }
+
+// --- Student: Course Materials View ---
+        composable(
+            route = "student_materials/{courseId}/{courseName}",
+            arguments = listOf(
+                navArgument("courseId") { type = NavType.StringType },
+                navArgument("courseName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
+            val courseName = backStackEntry.arguments?.getString("courseName") ?: ""
+            StudentMaterialsScreen(navController, courseId, courseName)
+        }
+
+// --- Student: Submit Assignment ---
+        composable(
+            route = "submit_assignment/{assignmentId}/{courseId}",
+            arguments = listOf(
+                navArgument("assignmentId") { type = NavType.StringType },
+                navArgument("courseId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val assignmentId = backStackEntry.arguments?.getString("assignmentId") ?: ""
+            val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
+            SubmitAssignmentScreen(navController, assignmentId, courseId)
         }
 
         // --- DYNAMIC DASHBOARD (TRAFFIC CONTROLLER) ---
@@ -77,16 +144,21 @@ fun AppNavigation() {
             SubmissionTrackingScreen(navController, id, title, viewModel())
         }
 
-        composable("office_hours_scheduler") {
-            OfficeHoursSchedulerScreen(navController)
+        // --- Student: View a specific lecturer's available office hours ---
+        composable(
+            route = "lecturer_office_hours/{lecturerId}/{lecturerName}",
+            arguments = listOf(
+                navArgument("lecturerId") { type = NavType.StringType },
+                navArgument("lecturerName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val lecturerId = backStackEntry.arguments?.getString("lecturerId") ?: ""
+            val lecturerName = backStackEntry.arguments?.getString("lecturerName") ?: ""
+            LecturerOfficeHoursSlotsScreen(navController, lecturerId, lecturerName)
         }
 
-        composable(
-            route = "materials_management/{courseName}",
-            arguments = listOf(navArgument("courseName") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val courseName = backStackEntry.arguments?.getString("courseName") ?: ""
-            MaterialsManagementScreen(navController, courseName)
+        composable("office_hours_scheduler") {
+            OfficeHoursSchedulerScreen(navController)
         }
 
         // --- EXISTING STUDENT & SHARED COMPONENTS (REMAINING INTACT) ---

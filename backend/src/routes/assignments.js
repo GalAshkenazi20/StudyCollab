@@ -2,6 +2,40 @@ const express = require('express');
 const router = express.Router();
 const Assignment = require('../models/Assignment');
 
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const uploadDir = 'uploads/assignments/';
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+});
+
+const upload = multer({ storage });
+
+// POST /api/assignments/upload — Create assignment with file upload
+router.post('/upload', upload.single('file'), async (req, res) => {
+    try {
+        const newAssignment = new Assignment({
+            courseId: req.body.courseId,
+            title: req.body.title,
+            description: req.body.description || '',
+            fileUrl: req.file ? `/uploads/assignments/${req.file.filename}` : null,
+            dueAt: req.body.dueAt,
+            createdBy: req.body.creatorId
+        });
+        await newAssignment.save();
+        res.status(201).json(newAssignment);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to create assignment", error: error.message });
+    }
+});
+
 // 1. Create a course assignment (Lecturer)
 router.post('/', async (req, res) => {
     try {
@@ -28,3 +62,4 @@ router.get('/course/:courseId', async (req, res) => {
 });
 
 module.exports = router;
+

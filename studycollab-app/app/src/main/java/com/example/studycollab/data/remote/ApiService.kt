@@ -5,12 +5,82 @@ import com.example.studycollab.ui.scheduler.SlotInfo
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import com.example.studycollab.data.model.LecturerInfo
 
 interface ApiService {
 
     // --- Auth ---
     @POST("auth/login")
     suspend fun loginUser(@Body credentials: Map<String, String>): User
+
+    // --- Course Topics (Lecturer) ---
+    @PUT("api/courses/{courseId}/topics/{topicIndex}/toggle")
+    suspend fun toggleTopic(
+        @Path("courseId") courseId: String,
+        @Path("topicIndex") topicIndex: Int
+    ): Response<Course>
+
+    @PUT("api/courses/{courseId}/topics")
+    suspend fun addTopic(
+        @Path("courseId") courseId: String,
+        @Body body: Map<String, String>
+    ): Response<Course>
+
+    @DELETE("api/courses/{courseId}/topics/{topicIndex}")
+    suspend fun removeTopic(
+        @Path("courseId") courseId: String,
+        @Path("topicIndex") topicIndex: Int
+    ): Response<Course>
+
+    // --- Get single course ---
+    @GET("api/courses/{courseId}")
+    suspend fun getCourseById(
+        @Path("courseId") courseId: String
+    ): Response<Course>
+
+    // --- Materials ---
+    @GET("api/materials/course/{courseId}")
+    suspend fun getCourseMaterials(
+        @Path("courseId") courseId: String
+    ): Response<List<Material>>
+
+    @Multipart
+    @POST("api/materials/upload")
+    suspend fun uploadMaterial(
+        @Part file: MultipartBody.Part,
+        @Part("courseId") courseId: RequestBody,
+        @Part("title") title: RequestBody,
+        @Part("lecturerId") lecturerId: RequestBody
+    ): Response<Material>
+
+    @DELETE("api/materials/{materialId}")
+    suspend fun deleteMaterial(
+        @Path("materialId") materialId: String
+    ): Response<Unit>
+
+    // --- Assignments with file upload ---
+    @Multipart
+    @POST("api/assignments/upload")
+    suspend fun uploadAssignment(
+        @Part file: MultipartBody.Part,
+        @Part("courseId") courseId: RequestBody,
+        @Part("title") title: RequestBody,
+        @Part("description") description: RequestBody,
+        @Part("dueAt") dueAt: RequestBody,
+        @Part("creatorId") creatorId: RequestBody
+    ): Response<Assignment>
+
+    // --- Submissions with file upload ---
+    @Multipart
+    @POST("api/submissions/upload")
+    suspend fun uploadSubmission(
+        @Part file: MultipartBody.Part,
+        @Part("assignmentId") assignmentId: RequestBody,
+        @Part("courseId") courseId: RequestBody,
+        @Part("groupId") groupId: RequestBody
+    ): Response<Submission>
 
     // --- Study Group Endpoints ---
     @GET("api/groups/user/{userId}")
@@ -56,6 +126,16 @@ interface ApiService {
         @Path("groupId") groupId: String,
         @Path("assignmentId") assignmentId: String
     ): Response<GroupAssignmentWork>
+
+    // --- Get all lecturers (for student to pick from) ---
+    @GET("auth/lecturers")
+    suspend fun getAllLecturers(): Response<List<LecturerInfo>>
+
+    // --- Get available (unbooked) slots for a lecturer ---
+    @GET("api/office-hours/available/{lecturerId}")
+    suspend fun getAvailableOfficeHours(
+        @Path("lecturerId") lecturerId: String
+    ): Response<List<SlotInfo>>
 
     @POST("api/group-work/{workId}/subtasks")
     suspend fun addSubTask(

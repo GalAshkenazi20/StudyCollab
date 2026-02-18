@@ -36,6 +36,9 @@ mongoose.connect(dbURI)
 app.use(express.json());
 app.use(cors());
 
+app.use('/uploads', express.static('uploads'));
+
+
 // STATIC FOLDER FOR UPLOADS
 // This allows the Android app to view PDFs via http://localhost:3000/uploads/...
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

@@ -6,6 +6,40 @@ const Assignment = require('../models/Assignment');
 const Notification = require('../models/Notification');
 const User = require('../models/User'); 
 
+//added - Submission File Upload Support.
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const uploadDir = 'uploads/submissions/';
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+});
+
+const upload = multer({ storage });
+
+// POST with file — Student submits assignment with PDF
+router.post('/upload', upload.single('file'), async (req, res) => {
+    try {
+        const newSubmission = new Submission({
+            assignmentId: req.body.assignmentId,
+            groupId: req.body.groupId || null,
+            courseId: req.body.courseId,
+            fileUrl: `/uploads/submissions/${req.file.filename}`
+        });
+        const saved = await newSubmission.save();
+        res.status(201).json(saved);
+    } catch (error) {
+        res.status(500).json({ message: "Submission failed", error: error.message });
+    }
+});
+//added - for Submission File Upload Support.
+
 // =================================================================
 // 1. POST: Student Submits an Assignment (יצירת הגשה + התראה למרצה)
 // =================================================================
