@@ -1,5 +1,6 @@
 package com.example.studycollab.ui.courses
 
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,22 +8,26 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChecklistRtl
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.studycollab.data.model.Course
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LecturerCoursesScreen(navController: NavController) {
-    // This would typically come from a ViewModel fetching courses taught by the lecturer
-    val mockCourses = listOf("Computer Science 101", "Data Compression", "Software Engineering")
+fun LecturerCoursesScreen(
+    navController: NavController,
+    viewModel: LecturerCourseViewModel = viewModel()
+) {
+    LaunchedEffect(Unit) {
+        viewModel.fetchLecturerCourses()
+    }
 
     Scaffold(
         topBar = {
@@ -36,27 +41,32 @@ fun LecturerCoursesScreen(navController: NavController) {
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(mockCourses) { courseName ->
-                // FIXED: Changed parameter names to match the refactored LecturerCourseCard
-                LecturerCourseCard(
-                    courseName = courseName,
-                    onManageMaterials = {
-                        Log.d("LecturerCourses", "Navigating to materials for $courseName")
-                        // navController.navigate("materials/$courseName")
-                    },
-                    onAssignmentPublished = { title, fileUri ->
-                        // This block runs when the lecturer clicks 'Publish' in the dialog
-                        Log.d("LecturerCourses", "New Assignment: $title, File: $fileUri")
-
-                        // NEXT STEP: Call your ViewModel here to upload the PDF to Node.js
-                        // viewModel.uploadAssignment(courseName, title, fileUri)
-                    }
-                )
+        if (viewModel.isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(viewModel.lecturerCourses) { course ->
+                    LecturerCourseCard(
+                        course = course,
+                        onManageMaterials = {
+                            navController.navigate("materials_management/${course.id}/${course.name}")
+                        },
+                        onManageSyllabus = {
+                            navController.navigate("syllabus_management/${course.id}/${course.name}")
+                        },
+                        onAssignmentPublished = { title, fileUri ->
+                            viewModel.uploadAssignment(course.id, title, "", fileUri)
+                        }
+                    )
+                }
             }
         }
     }
@@ -64,16 +74,16 @@ fun LecturerCoursesScreen(navController: NavController) {
 
 @Composable
 fun LecturerCourseCard(
-    courseName: String,
+    course: Course,
     onManageMaterials: () -> Unit,
-    onAssignmentPublished: (title: String, fileUri: android.net.Uri) -> Unit
+    onManageSyllabus: () -> Unit,
+    onAssignmentPublished: (title: String, fileUri: Uri) -> Unit
 ) {
-    // State to control the visibility of the creation dialog
     var showCreateDialog by remember { mutableStateOf(false) }
 
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = courseName, style = MaterialTheme.typography.titleLarge)
+            Text(text = course.name, style = MaterialTheme.typography.titleLarge)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -81,7 +91,6 @@ fun LecturerCourseCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Clicking this now opens the enforced file-upload dialog
                 OutlinedButton(
                     onClick = { showCreateDialog = true },
                     modifier = Modifier.weight(1f)
@@ -100,10 +109,20 @@ fun LecturerCourseCard(
                     Text("Materials")
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onManageSyllabus,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.ChecklistRtl, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Manage Syllabus")
+            }
         }
     }
 
-    // Logic to show the dialog and handle the mandatory file upload
     if (showCreateDialog) {
         CreateAssignmentDialog(
             onDismiss = { showCreateDialog = false },

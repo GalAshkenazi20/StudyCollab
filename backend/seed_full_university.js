@@ -180,6 +180,17 @@ async function seed() {
         }
         const savedCourses = await Course.insertMany(coursesDocs);
 
+        // 2.5 Create CourseMembership for Lecturers
+        console.log("🔗 Creating Lecturer Memberships...");
+        const lecturerMemberships = savedCourses.map((c, idx) => ({
+            userId: coursesDocs[idx].lecturerId,
+            courseId: c._id,
+            role: 'lecturer',
+            status: 'active'
+        }));
+        await CourseMembership.insertMany(lecturerMemberships);
+        console.log(`   ✅ Created ${lecturerMemberships.length} lecturer memberships`);
+
         // 3. Create Students & Enroll
         console.log("🎓 Creating Students...");
         const studentsPerYear = 20;

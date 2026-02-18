@@ -95,7 +95,10 @@ fun CourseDetailScreen(
                 // --- Action Buttons ---
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick = { /* Future: navigate to assignments */ },
+                        //added
+                        onClick = {
+                            navController.navigate("student_assignments/${c.id}/${courseName}")
+                        },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {
@@ -103,7 +106,10 @@ fun CourseDetailScreen(
                     }
 
                     Button(
-                        onClick = { /* Future: navigate to materials */ },
+                        //added
+                        onClick = {
+                            navController.navigate("student_materials/${c.id}/${courseName}")
+                        },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {

@@ -3,6 +3,17 @@ const router = express.Router();
 const User = require('../models/User');
 const bcrypt = require('bcryptjs'); 
 
+// GET /auth/lecturers — Get all lecturers (for student office hours screen)
+router.get('/lecturers', async (req, res) => {
+    try {
+        const lecturers = await User.find({ role: 'lecturer' })
+            .select('profile.fullName _id');
+        res.json(lecturers);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch lecturers", error: error.message });
+    }
+});
+
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     

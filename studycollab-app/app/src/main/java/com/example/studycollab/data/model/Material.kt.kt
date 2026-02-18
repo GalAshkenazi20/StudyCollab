@@ -2,13 +2,12 @@ package com.example.studycollab.data.model
 
 import com.google.gson.annotations.SerializedName
 
-data class Assignment(
+data class Material(
     @SerializedName("_id")
     val id: String,
     val courseId: String,
     val title: String,
-    val description: String? = null,
-    val fileUrl: String? = null,
-    val dueAt: String,
-    val createdBy: String? = null
+    val fileUrl: String,
+    val uploadedBy: String? = null,
+    val createdAt: String? = null
 )

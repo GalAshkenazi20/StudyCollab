@@ -2,46 +2,93 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+const Material = require('../models/Material');
 
-// Configure storage logic
+// Ensure upload directory exists
+const uploadDir = 'uploads/materials/';
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/materials/'); // Ensure this folder exists
-    },
-    filename: (req, file, cb) => {
-        // Renaming the file to avoid duplicates: timestamp-originalname
-        cb(null, Date.now() + '-' + file.originalname);
-    }
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
 
-const upload = multer({ 
-    storage: storage,
+const upload = multer({
+    storage,
     fileFilter: (req, file, cb) => {
-        const filetypes = /pdf|doc|docx|ppt|pptx/;
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-        if (extname) return cb(null, true);
-        cb(new Error("Only documents are allowed!"));
+        const allowed = /pdf|doc|docx|ppt|pptx/;
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (allowed.test(ext)) return cb(null, true);
+        cb(new Error("Only document files are allowed"));
     }
 });
 
-// POST route to upload course material
+// GET /api/materials/course/:courseId — List all materials for a course
+router.get('/course/:courseId', async (req, res) => {
+    try {
+        const materials = await Material.find({ courseId: req.params.courseId })
+            .sort({ createdAt: -1 });
+        res.json(materials);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch materials", error: error.message });
+    }
+});
+
+// POST /api/materials/upload — Upload a new material PDF
 router.post('/upload', upload.single('file'), async (req, res) => {
     try {
-        if (!req.file) return res.status(400).send("No file uploaded.");
+        if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-        // Save metadata to your MongoDB (Course name, File Path, Uploader ID)
-        const fileData = {
-            title: req.body.title,
+        const material = new Material({
             courseId: req.body.courseId,
+            title: req.body.title || req.file.originalname,
             fileUrl: `/uploads/materials/${req.file.filename}`,
             uploadedBy: req.body.lecturerId
-        };
+        });
 
-        // TODO: Save fileData to your MongoDB 'Material' model here
-        
-        res.status(201).json({ message: "Upload successful", data: fileData });
+        await material.save();
+        res.status(201).json(material);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: "Upload failed", error: error.message });
+    }
+});
+
+// DELETE /api/materials/:materialId — Delete a material
+router.delete('/:materialId', async (req, res) => {
+    try {
+        const material = await Material.findById(req.params.materialId);
+        if (!material) return res.status(404).json({ message: "Material not found" });
+
+        // Delete the actual file from disk
+        const filePath = path.join(__dirname, '../../', material.fileUrl);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        await Material.findByIdAndDelete(req.params.materialId);
+        res.json({ message: "Material deleted" });
+    } catch (error) {
+        res.status(500).json({ message: "Delete failed", error: error.message });
+    }
+});
+
+// GET /api/materials/download/:materialId — Serve/download a file
+router.get('/download/:materialId', async (req, res) => {
+    try {
+        const material = await Material.findById(req.params.materialId);
+        if (!material) return res.status(404).json({ message: "Material not found" });
+
+        const filePath = path.join(__dirname, '../../', material.fileUrl);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ message: "File not found on disk" });
+        }
+
+        res.download(filePath);
+    } catch (error) {
+        res.status(500).json({ message: "Download failed", error: error.message });
     }
 });
 

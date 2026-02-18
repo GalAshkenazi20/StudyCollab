@@ -62,4 +62,17 @@ router.delete('/:slotId', async (req, res) => {
     }
 });
 
+// 5. GET available (unbooked) slots for a lecturer (Student view)
+router.get('/available/:lecturerId', async (req, res) => {
+    try {
+        const slots = await OfficeHourSlot.find({
+            lecturerId: req.params.lecturerId,
+            isBooked: false
+        }).sort({ dayOfWeek: 1, startTime: 1 });
+        res.json(slots);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching available slots", error: error.message });
+    }
+});
+
 module.exports = router;
