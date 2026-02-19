@@ -52,4 +52,6 @@ sealed class Screen(val route: String) {
 
     // --- NEW STUDENT SPECIFIC ROUTES ---
     object BookOfficeHours : Screen("book_office_hours")
+
+    object NotificationManager : Screen("notification_manager")
 }
