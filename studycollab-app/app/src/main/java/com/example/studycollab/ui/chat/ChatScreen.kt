@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,15 +27,11 @@ import com.example.studycollab.data.model.Message
 import com.example.studycollab.data.remote.ApiClient
 import com.example.studycollab.data.repository.ChatRepository
 import com.example.studycollab.utils.UserSession
+import com.example.studycollab.utils.mouseWheelScroll
 
-// --- Factory ---
-// מחלקה זו אחראית ליצור את ה-ViewModel ולתת לו את ה-Repository
-// (זה מחליף את Hilt באופן זמני כדי שהכל יעבוד חלק)
 class ChatViewModelFactory : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
-            // אנו מניחים שיש לך ApiClient.apiService זמין.
-            // אם ה-ApiClient שלך מוגדר אחרת, ייתכן שתצטרך להתאים שורה זו.
             val apiService = ApiClient.apiService
             val repository = ChatRepository(apiService)
             @Suppress("UNCHECKED_CAST")
@@ -49,12 +45,16 @@ class ChatViewModelFactory : ViewModelProvider.Factory {
 @Composable
 fun ChatScreen(
     navController: NavController,
-    groupId: String
+    groupId: String,
+    consultationName: String? = null, // Received from AppNavigation
+    isConsultation: Boolean = false  // Received from AppNavigation
 ) {
     val viewModel: ChatViewModel = viewModel(factory = ChatViewModelFactory())
+    val listState = rememberLazyListState()
 
+    // We use the clean groupId passed from AppNavigation
     LaunchedEffect(groupId) {
-        viewModel.startChat(groupId)
+        viewModel.startChat(groupId, isConsultation)
     }
 
     val messages by viewModel.messages.collectAsState()
@@ -64,14 +64,29 @@ fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Group Chat") },
+                title = {
+                    Column {
+                        Text(
+                            text = if (isConsultation) "Consultation" else "Group Chat",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (isConsultation && consultationName != null) {
+                            Text(
+                                text = consultationName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 )
             )
         }
@@ -81,44 +96,65 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // רשימת ההודעות
+            // Message List
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                reverseLayout = false // הודעות חדשות מתווספות למטה
+                    .mouseWheelScroll(listState) // Desktop/Emulator scroll support
+                    .padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 16.dp)
             ) {
                 items(messages) { message ->
-                    // בדיקה אם אני השולח
                     val isMe = message.senderId == currentUser.userId
                     MessageBubble(message = message, isMe = isMe)
                 }
             }
 
-            // אזור ההקלדה
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // Input Area
+            Surface(
+                tonalElevation = 2.dp,
+                shadowElevation = 8.dp
             ) {
-                OutlinedTextField(
-                    value = messageText,
-                    onValueChange = { viewModel.onMessageChange(it) },
-                    placeholder = { Text("Type a message...") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(24.dp)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                IconButton(
-                    onClick = { viewModel.sendMessage() },
+                Row(
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Send, "Send", tint = Color.White)
+                    OutlinedTextField(
+                        value = messageText,
+                        onValueChange = { viewModel.onMessageChange(it) },
+                        placeholder = { Text("Type a message...") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    IconButton(
+                        onClick = { viewModel.sendMessage() },
+                        enabled = messageText.isNotBlank(),
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                if (messageText.isNotBlank()) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant,
+                                CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            tint = if (messageText.isNotBlank()) Color.White else Color.Gray
+                        )
+                    }
                 }
             }
         }
@@ -128,9 +164,9 @@ fun ChatScreen(
 @Composable
 fun MessageBubble(message: Message, isMe: Boolean) {
     val align = if (isMe) Alignment.End else Alignment.Start
-    val backgroundColor = if (isMe) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+    val containerColor = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer
+    val contentColor = if (isMe) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
 
-    // עיצוב הפינות של הבועה
     val shape = if (isMe) {
         RoundedCornerShape(16.dp, 16.dp, 2.dp, 16.dp)
     } else {
@@ -140,15 +176,15 @@ fun MessageBubble(message: Message, isMe: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         horizontalAlignment = align
     ) {
-        // אם זה לא אני, נציג את שם השולח מעל הבועה
         if (!isMe) {
             Text(
                 text = message.senderName,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 8.dp, bottom = 2.dp)
             )
         }
@@ -156,13 +192,14 @@ fun MessageBubble(message: Message, isMe: Boolean) {
         Box(
             modifier = Modifier
                 .clip(shape)
-                .background(backgroundColor)
-                .padding(12.dp)
+                .background(containerColor)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
                 .widthIn(max = 280.dp)
         ) {
             Text(
-                text = message.content, // כאן אנו משתמשים בשדה האמיתי content
-                color = MaterialTheme.colorScheme.onSurface
+                text = message.content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor
             )
         }
     }

@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.studycollab.data.model.Message
 import com.example.studycollab.data.repository.ChatRepository
 import com.example.studycollab.utils.UserSession
-// מחקנו את השורות של dagger ו-hilt שהיו כאן ועשו בעיות
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,24 +13,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-// הסרנו את @HiltViewModel כי אנחנו נעבוד בשיטה פשוטה יותר
-class ChatViewModel(
-    private val repository: ChatRepository
-) : ViewModel() {
+class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
 
-    // רשימת ההודעות
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: StateFlow<List<Message>> = _messages.asStateFlow()
 
-    // הטקסט המוקלד
     private val _messageText = MutableStateFlow("")
     val messageText: StateFlow<String> = _messageText.asStateFlow()
 
-    private var currentGroupId: String? = null
+    // This is the source of truth for the room session
+    private var currentRoomId: String? = null
 
-    // התחלת צ'אט: טעינה ורענון אוטומטי
-    fun startChat(groupId: String, poll: Boolean = true) {
-        currentGroupId = groupId
+    /**
+     * @param groupId The raw Hex ID of the group
+     * @param isConsultation if true, creates a NEW room context separate from the group
+     */
+    fun startChat(groupId: String, isConsultation: Boolean = false, poll: Boolean = true) {
+        // By prefixing, we ensure a NEW chat history that does not include old messages
+        this.currentRoomId = if (isConsultation) "consultation_$groupId" else groupId
+
         if (poll) {
             startPollingMessages()
         }
@@ -43,30 +43,29 @@ class ChatViewModel(
 
     fun sendMessage() {
         val content = _messageText.value
-        val groupId = currentGroupId ?: return
+        val roomId = currentRoomId ?: return // Points to consultation room if in that mode
         val currentUser = UserSession
 
         if (content.isBlank()) return
 
         viewModelScope.launch {
-            _messageText.value = "" // ניקוי מהיר של השדה
-
+            _messageText.value = ""
             try {
-                // תיקון השגיאה: המרה בטוחה למחרוזות (String) כדי שלא יהיה null
                 val safeUserId = currentUser.userId.toString()
                 val safeUserName = currentUser.userName ?: "Student"
 
+                // Sends to the new prefixed room ID
                 val result = repository.sendMessage(
-                    groupId = groupId,
+                    groupId = roomId,
                     senderId = safeUserId,
                     senderName = safeUserName,
                     content = content
                 )
 
                 if (result.isSuccess) {
-                    fetchMessages() // רענון מידי
+                    fetchMessages()
                 } else {
-                    Log.e("ChatViewModel", "Failed to send message")
+                    Log.e("ChatViewModel", "Failed to send message to $roomId")
                 }
             } catch (e: Exception) {
                 Log.e("ChatViewModel", "Error sending message", e)
@@ -74,10 +73,9 @@ class ChatViewModel(
         }
     }
 
-    // פונקציה שרצה כל 3 שניות לבדוק הודעות חדשות
     private fun startPollingMessages() {
         viewModelScope.launch {
-            while (isActive && currentGroupId != null) {
+            while (isActive && currentRoomId != null) {
                 fetchMessages()
                 delay(3000)
             }
@@ -85,8 +83,8 @@ class ChatViewModel(
     }
 
     private suspend fun fetchMessages() {
-        val groupId = currentGroupId ?: return
-        val result = repository.getMessages(groupId)
+        val roomId = currentRoomId ?: return
+        val result = repository.getMessages(roomId)
         if (result.isSuccess) {
             _messages.value = result.getOrDefault(emptyList())
         }

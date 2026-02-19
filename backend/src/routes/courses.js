@@ -114,4 +114,14 @@ router.delete('/:courseId/topics/:topicIndex', async (req, res) => {
     }
 });
 
+// GET /api/courses/:courseId/peer-groups
+router.get('/:courseId/peer-groups', async (req, res) => {
+    try {
+        const groups = await StudyGroup.find({ courseId: req.params.courseId });
+        res.json(groups);
+    } catch (error) {
+        res.status(500).json({ message: "Error finding peers" });
+    }
+});
+
 module.exports = router;

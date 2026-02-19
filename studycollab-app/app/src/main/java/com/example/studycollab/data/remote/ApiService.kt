@@ -64,7 +64,7 @@ interface ApiService {
     @Multipart
     @POST("api/assignments/upload")
     suspend fun uploadAssignment(
-        @Part file: MultipartBody.Part,
+        @Part file: MultipartBody.Part?,
         @Part("courseId") courseId: RequestBody,
         @Part("title") title: RequestBody,
         @Part("description") description: RequestBody,
@@ -188,4 +188,12 @@ interface ApiService {
 
     @DELETE("api/office-hours/{slotId}")
     suspend fun deleteOfficeHour(@Path("slotId") slotId: String): Response<Unit>
+    
+    // 1. Peer Consultation: Get all groups belonging to a specific course
+    @GET("api/groups/course/{courseId}")
+    suspend fun getGroupsByCourse(@Path("courseId") courseId: String): Response<List<StudyGroup>>
+
+    // 2. Lecturer Consultation: Create or retrieve a specialized "Ghost Group" for consultation
+    @POST("api/groups/consultation")
+    suspend fun setupConsultation(@Body request: Map<String, String>): Response<StudyGroup>
 }

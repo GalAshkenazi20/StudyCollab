@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.studycollab.utils.UserSession
 import com.example.studycollab.data.model.*
 import com.example.studycollab.data.remote.ApiClient
+import com.example.studycollab.data.remote.ApiClient.apiService
 import com.example.studycollab.data.repository.StudyGroupRepository
 import kotlinx.coroutines.launch
 
@@ -139,6 +140,24 @@ class StudyGroupViewModel(
                 onComplete(false)
             }
             isLoading = false
+        }
+    }
+
+    // Inside StudyGroupViewModel.kt
+    suspend fun setupConsultation(originGroupId: String, lecturerId: String): StudyGroup? {
+        return try {
+            // Ensure your ApiService has: @POST("api/groups/consultation")
+            val response = apiService.setupConsultation(mapOf(
+                "originGroupId" to originGroupId,
+                "lecturerId" to lecturerId
+            ))
+            if (response.isSuccessful) {
+                response.body()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 }

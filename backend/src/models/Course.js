@@ -9,6 +9,11 @@ const CourseSchema = new mongoose.Schema({
     name: { type: String, required: true },
     code: { type: String, required: true },
     semester: { type: String, required: true },
+    lecturer: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User',
+        required: true 
+    },
     
     // --- הוספנו את החלק הזה למערכת שעות ---
     schedule: {

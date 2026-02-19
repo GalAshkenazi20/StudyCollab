@@ -8,7 +8,7 @@ data class Course(
     val name: String,
     val code: String,
     val semester: String,
-
+    val lecturerName: String? = null,
     val totalLectures: Int = 13,
     val completedLectures: Int = 0,
 

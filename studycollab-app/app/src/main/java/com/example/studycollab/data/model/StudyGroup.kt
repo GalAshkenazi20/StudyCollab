@@ -54,3 +54,17 @@ fun StudyGroup.getCourseName(): String {
         else courseId.asString
     } catch (e: Exception) { "General Course" }
 }
+
+fun StudyGroup.getLecturerName(): String? {
+    return try {
+        if (courseId.isJsonObject) {
+            val courseObj = courseId.asJsonObject
+            if (courseObj.has("lecturerName")) {
+                courseObj.get("lecturerName").asString
+            } else if (courseObj.has("lecturer") && courseObj.get("lecturer").isJsonObject) {
+                // If the lecturer is a nested object with a name
+                courseObj.getAsJsonObject("lecturer").get("name").asString
+            } else null
+        } else null
+    } catch (e: Exception) { null }
+}

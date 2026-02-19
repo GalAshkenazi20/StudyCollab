@@ -3,6 +3,7 @@ package com.example.studycollab.ui.courses
 import android.app.Application
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -16,6 +17,8 @@ import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.text.SimpleDateFormat
+import java.util.*
 
 class LecturerCourseViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -27,8 +30,10 @@ class LecturerCourseViewModel(application: Application) : AndroidViewModel(appli
         private set
     var selectedCourse by mutableStateOf<Course?>(null)
         private set
+    var uploadStatus by mutableStateOf<String?>(null)
 
-    // Fetch courses for the logged-in lecturer
+    // --- Course & Syllabus Management ---
+
     fun fetchLecturerCourses() {
         viewModelScope.launch {
             isLoading = true
@@ -38,60 +43,11 @@ class LecturerCourseViewModel(application: Application) : AndroidViewModel(appli
                 if (response.isSuccessful) {
                     lecturerCourses = response.body() ?: emptyList()
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                isLoading = false
-            }
+            } catch (e: Exception) { Log.e("LecturerVM", "Fetch failed", e) }
+            finally { isLoading = false }
         }
     }
 
-    // Toggle topic completion
-    fun toggleTopic(courseId: String, topicIndex: Int) {
-        viewModelScope.launch {
-            try {
-                val response = ApiClient.apiService.toggleTopic(courseId, topicIndex)
-                if (response.isSuccessful) {
-                    // Update local state
-                    selectedCourse = response.body()
-                    // Also refresh the list so other screens reflect changes
-                    fetchLecturerCourses()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    // Add a new topic to syllabus
-    fun addTopic(courseId: String, title: String) {
-        viewModelScope.launch {
-            try {
-                val response = ApiClient.apiService.addTopic(courseId, mapOf("title" to title))
-                if (response.isSuccessful) {
-                    selectedCourse = response.body()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    // Remove a topic
-    fun removeTopic(courseId: String, topicIndex: Int) {
-        viewModelScope.launch {
-            try {
-                val response = ApiClient.apiService.removeTopic(courseId, topicIndex)
-                if (response.isSuccessful) {
-                    selectedCourse = response.body()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    // Load course details
     fun loadCourse(courseId: String) {
         viewModelScope.launch {
             try {
@@ -99,43 +55,69 @@ class LecturerCourseViewModel(application: Application) : AndroidViewModel(appli
                 if (response.isSuccessful) {
                     selectedCourse = response.body()
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            } catch (e: Exception) { e.printStackTrace() }
         }
     }
 
-    // --- Materials ---
+    fun toggleTopic(courseId: String, topicIndex: Int) {
+        viewModelScope.launch {
+            try {
+                val response = ApiClient.apiService.toggleTopic(courseId, topicIndex)
+                if (response.isSuccessful) {
+                    selectedCourse = response.body()
+                    fetchLecturerCourses() // Sync lists
+                }
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
+    fun addTopic(courseId: String, title: String) {
+        viewModelScope.launch {
+            try {
+                val response = ApiClient.apiService.addTopic(courseId, mapOf("title" to title))
+                if (response.isSuccessful) {
+                    selectedCourse = response.body()
+                }
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
+    fun removeTopic(courseId: String, topicIndex: Int) {
+        viewModelScope.launch {
+            try {
+                val response = ApiClient.apiService.removeTopic(courseId, topicIndex)
+                if (response.isSuccessful) {
+                    selectedCourse = response.body()
+                }
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
+    // --- Materials & Assignments (Previously Refactored) ---
 
     fun fetchMaterials(courseId: String) {
         viewModelScope.launch {
             try {
                 val response = ApiClient.apiService.getCourseMaterials(courseId)
-                if (response.isSuccessful) {
-                    materials = response.body() ?: emptyList()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+                if (response.isSuccessful) materials = response.body() ?: emptyList()
+            } catch (e: Exception) { e.printStackTrace() }
         }
     }
 
     fun uploadMaterial(courseId: String, title: String, fileUri: Uri) {
         viewModelScope.launch {
+            isLoading = true
             try {
                 val context = getApplication<Application>().applicationContext
                 val filePart = uriToMultipart(context, fileUri, "file")
-                val courseIdBody = courseId.toRequestBody("text/plain".toMediaTypeOrNull())
-                val titleBody = title.toRequestBody("text/plain".toMediaTypeOrNull())
-                val lecturerIdBody = (UserSession.userId ?: "").toRequestBody("text/plain".toMediaTypeOrNull())
-
-                val response = ApiClient.apiService.uploadMaterial(filePart, courseIdBody, titleBody, lecturerIdBody)
-                if (response.isSuccessful) {
-                    fetchMaterials(courseId) // Refresh list
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+                val response = ApiClient.apiService.uploadMaterial(
+                    filePart,
+                    courseId.toRequestBody("text/plain".toMediaTypeOrNull()),
+                    title.toRequestBody("text/plain".toMediaTypeOrNull()),
+                    (UserSession.userId ?: "").toRequestBody("text/plain".toMediaTypeOrNull())
+                )
+                if (response.isSuccessful) fetchMaterials(courseId)
+            } finally { isLoading = false }
         }
     }
 
@@ -143,48 +125,39 @@ class LecturerCourseViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             try {
                 val response = ApiClient.apiService.deleteMaterial(materialId)
-                if (response.isSuccessful) {
-                    fetchMaterials(courseId)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+                if (response.isSuccessful) fetchMaterials(courseId)
+            } catch (e: Exception) { e.printStackTrace() }
         }
     }
 
-    // --- Assignments ---
-
-    fun uploadAssignment(courseId: String, title: String, dueAt: String, fileUri: Uri) {
+    fun publishAssignment(courseId: String, title: String, deadlineMillis: Long, fileUri: Uri?) {
         viewModelScope.launch {
+            isLoading = true
             try {
                 val context = getApplication<Application>().applicationContext
-                val filePart = uriToMultipart(context, fileUri, "file")
+                val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+                val formattedDate = sdf.format(Date(deadlineMillis))
+                val filePart = fileUri?.let { uriToMultipart(context, it, "file") }
 
-                val response = ApiClient.apiService.uploadAssignment(
+                ApiClient.apiService.uploadAssignment(
                     file = filePart,
                     courseId = courseId.toRequestBody("text/plain".toMediaTypeOrNull()),
                     title = title.toRequestBody("text/plain".toMediaTypeOrNull()),
-                    description = "".toRequestBody("text/plain".toMediaTypeOrNull()),
-                    dueAt = dueAt.toRequestBody("text/plain".toMediaTypeOrNull()),
+                    description = "New Assignment Published".toRequestBody("text/plain".toMediaTypeOrNull()),
+                    dueAt = formattedDate.toRequestBody("text/plain".toMediaTypeOrNull()),
                     creatorId = (UserSession.userId ?: "").toRequestBody("text/plain".toMediaTypeOrNull())
                 )
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+                uploadStatus = "Assignment Published!"
+            } finally { isLoading = false }
         }
     }
 
-    // Helper: Convert Uri to MultipartBody.Part
     private fun uriToMultipart(context: Context, uri: Uri, fieldName: String): MultipartBody.Part {
-        val contentResolver = context.contentResolver
-        val inputStream = contentResolver.openInputStream(uri)!!
+        val inputStream = context.contentResolver.openInputStream(uri)!!
         val bytes = inputStream.readBytes()
         inputStream.close()
-
-        val fileName = uri.lastPathSegment ?: "file.pdf"
-        val mimeType = contentResolver.getType(uri) ?: "application/pdf"
-        val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
-
-        return MultipartBody.Part.createFormData(fieldName, fileName, requestBody)
+        val fileName = uri.lastPathSegment ?: "file"
+        val mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream"
+        return MultipartBody.Part.createFormData(fieldName, fileName, bytes.toRequestBody(mimeType.toMediaTypeOrNull()))
     }
 }
