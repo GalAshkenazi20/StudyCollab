@@ -54,4 +54,6 @@ sealed class Screen(val route: String) {
     object BookOfficeHours : Screen("book_office_hours")
 
     object NotificationManager : Screen("notification_manager")
+
+    object Splash : Screen("splash")
 }

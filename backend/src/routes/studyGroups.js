@@ -131,4 +131,40 @@ router.get('/:groupId/participants', async (req, res) => {
     }
 });
 
+router.post('/consultation', async (req, res) => {
+    const { originGroupId, lecturerId } = req.body;
+
+    try {
+        // 1. Check if a consultation group already exists for this origin group
+        // We use the "purpose" and a naming convention to find it
+        let consultGroup = await StudyGroup.findOne({ 
+            courseId: originGroupId, // Temporarily using courseId or a new field to link them
+            purpose: 'other', // Or add 'consultation' to your Enum
+            name: { $regex: /Consultation$/ } 
+        });
+
+        if (consultGroup) return res.json(consultGroup);
+
+        // 2. Otherwise, fetch the original group to copy members
+        const original = await StudyGroup.findById(originGroupId);
+        if (!original) return res.status(404).json({ message: "Original group not found" });
+
+        // 3. Create the new "Fresh" group
+        const newGroup = new StudyGroup({
+            name: `${original.name} - Consultation`,
+            courseId: original.courseId,
+            purpose: 'other',
+            members: [
+                ...original.members,
+                { userId: lecturerId, role: 'admin', status: 'active' } // Add the Lecturer
+            ]
+        });
+
+        const saved = await newGroup.save();
+        res.status(201).json(saved);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to set up consultation" });
+    }
+});
+
 module.exports = router;

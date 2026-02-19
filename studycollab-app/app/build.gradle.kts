@@ -88,11 +88,10 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
     implementation("javax.inject:javax.inject:1")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 
-    // Mockito לבדיקות יחידה
     testImplementation("org.mockito:mockito-core:5.11.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
-// בדיקות עבור Coroutines (המשמשים ב-ViewModels)
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
 }
 
