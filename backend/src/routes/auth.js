@@ -14,6 +14,32 @@ router.get('/lecturers', async (req, res) => {
     }
 });
 
+// GET /auth/preferences/:userId — Get notification preferences
+router.get('/preferences/:userId', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.userId)
+            .select('notificationPreferences');
+        if (!user) return res.status(404).json({ message: "User not found" });
+        res.json(user.notificationPreferences || {});
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// PUT /auth/preferences/:userId — Update notification preferences
+router.put('/preferences/:userId', async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.params.userId,
+            { notificationPreferences: req.body },
+            { new: true }
+        );
+        res.json(user.notificationPreferences);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     

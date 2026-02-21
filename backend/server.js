@@ -57,6 +57,11 @@ app.use('/api/office-hours', officeHoursRouter); // Added for scheduler/booking
 app.use('/api/submissions', submissionsRouter); // Added for grading
 app.use('/api/materials', materialsRouter);     // Added for course slides/notes
 
+// Run deadline reminders every hour
+const checkDeadlines = require('./src/jobs/deadlineReminder');
+setInterval(checkDeadlines, 60 * 60 * 1000); // Every hour
+checkDeadlines(); // Run once on startup
+
 app.listen(PORT, () => {
   console.log(`🚀 API running on http://localhost:${PORT}`);
 });

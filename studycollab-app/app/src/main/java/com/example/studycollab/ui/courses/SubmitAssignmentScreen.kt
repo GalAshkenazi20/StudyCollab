@@ -42,18 +42,13 @@ fun SubmitAssignmentScreen(
     val scrollState = rememberScrollState()
 
     // --- SENSOR & PERMISSION LAUNCHERS ---
-
-    // 1. Camera Sensor Launcher
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
         showSheet = false
         if (bitmap != null) {
-            // Success! (Note: Real apps save bitmap to Uri here)
             Toast.makeText(context, "Photo captured!", Toast.LENGTH_SHORT).show()
-            // Simulating a successful selection for the UI logic
         }
     }
 
-    // 2. Permission Security Guard
     val requestPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -64,7 +59,6 @@ fun SubmitAssignmentScreen(
         }
     }
 
-    // 3. File Selection Launcher
     val fileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             selectedUri = it
@@ -72,7 +66,6 @@ fun SubmitAssignmentScreen(
         }
     }
 
-    // Modern Entrance Animation
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
 
@@ -88,7 +81,6 @@ fun SubmitAssignmentScreen(
                 Spacer(Modifier.height(16.dp))
 
                 ModernListButton("Take a Photo", Icons.Default.CameraAlt) {
-                    // SAFE SENSOR CHECK
                     when (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)) {
                         PackageManager.PERMISSION_GRANTED -> cameraLauncher.launch()
                         else -> requestPermissionLauncher.launch(Manifest.permission.CAMERA)
@@ -124,7 +116,7 @@ fun SubmitAssignmentScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Upload Area Card - Modern Tonal Look
+            // Upload Area Card
             Card(
                 onClick = { showSheet = true },
                 modifier = Modifier
@@ -141,7 +133,6 @@ fun SubmitAssignmentScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Dynamic icon based on selection state
                     val icon = if (selectedUri != null) Icons.Default.CheckCircle else Icons.Default.CloudUpload
                     val tint = if (selectedUri != null) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
 
@@ -172,7 +163,7 @@ fun SubmitAssignmentScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Modern Sticky Action Button
+            // Submit Button
             Button(
                 onClick = { /* TODO: Backend upload logic */ },
                 enabled = selectedUri != null,

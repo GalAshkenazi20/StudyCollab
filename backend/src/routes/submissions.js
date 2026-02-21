@@ -1,12 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Submission = require('../models/Submission');
-// --- הוספנו את המודלים שחייבים בשביל ההתראות ---
 const Assignment = require('../models/Assignment');
 const Notification = require('../models/Notification');
 const User = require('../models/User'); 
 
-//added - Submission File Upload Support.
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -38,20 +36,16 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         res.status(500).json({ message: "Submission failed", error: error.message });
     }
 });
-//added - for Submission File Upload Support.
 
-// =================================================================
-// 1. POST: Student Submits an Assignment (יצירת הגשה + התראה למרצה)
-// =================================================================
+// POST: Student Submits an Assignment
 router.post('/', async (req, res) => {
     try {
-        // מקבלים את פרטי ההגשה מהאפליקציה
         const { assignmentId, studentId, groupId, fileUrl, comments } = req.body;
 
         const newSubmission = new Submission({
             assignmentId,
             studentId,
-            groupId, // אופציונלי, אם זה הגשה קבוצתית
+            groupId,
             fileUrl,
             comments,
             submittedAt: new Date()
@@ -59,31 +53,25 @@ router.post('/', async (req, res) => {
 
         const savedSubmission = await newSubmission.save();
 
-        // --- התראה למרצה (Lecturer Notification) ---
+        // Notify the lecturer
         try {
-            // 1. מוצאים את המטלה כדי לדעת מי המרצה שיצר אותה
             const assignment = await Assignment.findById(assignmentId);
-            // 2. מוצאים את הסטודנט כדי לדעת את שמו
             const student = await User.findById(studentId);
 
             if (assignment && student) {
-                // יצירת ההתראה
                 const notification = new Notification({
-                    userId: assignment.createdBy, // המזהה של המרצה
+                    userId: assignment.createdBy,
                     title: "New Submission",
-                    message: `${student.name} submitted: ${assignment.title}`,
+                    message: `${student.profile?.fullName || 'A student'} submitted: ${assignment.title}`,
                     type: "submission",
                     relatedId: savedSubmission._id,
                     createdAt: new Date()
                 });
-
                 await notification.save();
-                console.log(`🔔 Notification sent to lecturer about submission from ${student.name}`);
             }
         } catch (notifError) {
             console.error("Error sending notification to lecturer:", notifError);
         }
-        // ---------------------------------------------
 
         res.status(201).json(savedSubmission);
     } catch (error) {
@@ -92,14 +80,11 @@ router.post('/', async (req, res) => {
     }
 });
 
-// =================================================================
-// 2. GET: Get all submissions for assignment (Lecturer View)
-// =================================================================
+// GET: Get all submissions for assignment (Lecturer View)
 router.get('/assignment/:assignmentId', async (req, res) => {
     try {
         const submissions = await Submission.find({ assignmentId: req.params.assignmentId })
-            .populate('groupId', 'groupName') // מראה את שם הקבוצה (אם יש)
-            .populate('studentId', 'name email') // מראה את פרטי הסטודנט
+            .populate('groupId', 'name')
             .sort({ submittedAt: -1 });
         res.json(submissions);
     } catch (error) {
@@ -107,9 +92,7 @@ router.get('/assignment/:assignmentId', async (req, res) => {
     }
 });
 
-// =================================================================
-// 3. PATCH: Update Grade (מתן ציון + התראה לסטודנט)
-// =================================================================
+// PATCH: Update Grade + notify student
 router.patch('/:submissionId/grade', async (req, res) => {
     const { grade, feedback } = req.body;
     try {
@@ -121,9 +104,8 @@ router.patch('/:submissionId/grade', async (req, res) => {
 
         if (!updatedSubmission) return res.status(404).json({ message: "Submission not found" });
 
-        // --- התראה לסטודנט (Student Notification) ---
+        // Notify the student about the grade
         try {
-            // שולחים התראה לסטודנט שהגיש את העבודה
             const notification = new Notification({
                 userId: updatedSubmission.studentId,
                 title: "Grade Posted",
@@ -132,13 +114,10 @@ router.patch('/:submissionId/grade', async (req, res) => {
                 relatedId: updatedSubmission.assignmentId,
                 createdAt: new Date()
             });
-
             await notification.save();
-            console.log(`🔔 Notification sent to student regarding grade`);
         } catch (notifError) {
             console.error("Error sending grade notification:", notifError);
         }
-        // --------------------------------------------
 
         res.json(updatedSubmission);
     } catch (error) {

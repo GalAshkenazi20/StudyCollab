@@ -18,7 +18,7 @@ const SubmissionSchema = new mongoose.Schema({
     },
     fileUrl: { 
         type: String, 
-        required: true // Enforces your requirement for a PDF/Doc upload
+        required: true
     },
     grade: { 
         type: String, 
@@ -28,6 +28,11 @@ const SubmissionSchema = new mongoose.Schema({
         type: String, 
         default: "" 
     },
+    taskReport: [{
+        studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        studentName: { type: String },
+        contribution: { type: String }
+    }],
     submittedAt: { 
         type: Date, 
         default: Date.now 

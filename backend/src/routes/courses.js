@@ -29,9 +29,11 @@ router.get('/user/:userId', async (req, res) => {
 // GET /api/courses/:courseId/students
 router.get('/:courseId/students', async (req, res) => {
     try {
-        const memberships = await CourseMembership.find({ courseId: req.params.courseId })
-            .populate('userId');
-        
+        const memberships = await CourseMembership.find({
+            courseId: req.params.courseId,
+            role: 'student'  // ADD THIS FILTER — only return students, not lecturers
+        }).populate('userId');
+
         const students = memberships.map(m => m.userId).filter(u => u != null);
         res.json(students);
     } catch (error) {
@@ -45,6 +47,23 @@ router.get('/:courseId', async (req, res) => {
         const course = await Course.findById(req.params.courseId);
         if (!course) return res.status(404).json({ message: "Course not found" });
         res.json(course);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// GET /api/courses/:courseId/lecturer — Get the lecturer for a course
+router.get('/:courseId/lecturer', async (req, res) => {
+    try {
+        const membership = await CourseMembership.find({
+            courseId: req.params.courseId,
+            role: 'lecturer'
+        }).populate('userId', 'profile.fullName');
+
+        if (membership.length === 0) return res.status(404).json({ message: "No lecturer found" });
+
+        const lecturer = membership[0].userId;
+        res.json({ lecturerId: lecturer._id, name: lecturer.profile.fullName });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

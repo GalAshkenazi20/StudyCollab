@@ -156,6 +156,10 @@ fun AppNavigation() {
                     }
                 }
 
+                composable("lecturer_group_oversight") {
+                    LecturerGroupOversightScreen(navController)
+                }
+
                 // --- LECTURER ROUTES (Restored All) ---
                 composable("syllabus_management/{courseId}/{courseName}", listOf(navArgument("courseId"){type=NavType.StringType}, navArgument("courseName"){type=NavType.StringType})) { b ->
                     SyllabusManagementScreen(navController, b.arguments?.getString("courseId") ?: "", b.arguments?.getString("courseName") ?: "")

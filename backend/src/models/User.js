@@ -30,6 +30,16 @@ const UserSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Course' 
   }],
+  
+  notificationPreferences: {
+    groupUpdates: { type: Boolean, default: true },
+    deadlines: { type: Boolean, default: true },
+    scheduleChanges: { type: Boolean, default: true },
+    peerActivity: { type: Boolean, default: true },
+    officeHours: { type: Boolean, default: true },
+    // Deadline reminder timing (hours before deadline)
+    deadlineReminderHours: { type: Number, default: 24 }
+},
 
   settings: { type: Object }
 }, { timestamps: true });
