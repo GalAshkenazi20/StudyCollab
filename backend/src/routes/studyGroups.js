@@ -8,6 +8,18 @@ router.post('/create', async (req, res) => {
     const { groupName, courseId, creatorId, purpose, memberIds } = req.body;
 
     try {
+        // Validate: no lecturers in memberIds
+        if (memberIds && memberIds.length > 0) {
+            const User = require('../models/User');
+            const members = await User.find({ _id: { $in: memberIds } });
+            const lecturerInList = members.find(m => m.role === 'lecturer');
+            if (lecturerInList) {
+                return res.status(400).json({
+                    message: "Lecturers cannot be added as study group members"
+                });
+            }
+        }
+
         const initialMembers = [{
             userId: creatorId,
             role: 'admin',
@@ -37,7 +49,6 @@ router.post('/create', async (req, res) => {
 
         const savedGroup = await newGroup.save();
 
-        // RE-ENABLED POPULATE for the response
         const populatedGroup = await StudyGroup.findById(savedGroup._id)
             .populate('members.userId', 'profile role university')
             .populate('courseId', 'name');
@@ -71,7 +82,6 @@ router.get('/user/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
 
-        // RE-ENABLED POPULATE to get names and profile data
         const groups = await StudyGroup.find({ "members.userId": userId })
             .populate('members.userId', 'profile role university')
             .populate('courseId', 'name');
@@ -83,10 +93,21 @@ router.get('/user/:userId', async (req, res) => {
     }
 });
 
+// 3. Get all groups for a course (Lecturer oversight)
+router.get('/course/:courseId', async (req, res) => {
+    try {
+        const groups = await StudyGroup.find({ courseId: req.params.courseId })
+            .populate('members.userId', 'profile.fullName role');
+        res.json(groups);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch course groups", error: error.message });
+    }
+});
+
 // 4. Delete a Group (Includes Notifications)
 router.delete('/:groupId', async (req, res) => {
     try {
-        const { userId } = req.body; 
+        const { userId } = req.body;
         const group = await StudyGroup.findById(req.params.groupId);
 
         if (!group) return res.status(404).json({ message: "Group not found" });
@@ -131,39 +152,63 @@ router.get('/:groupId/participants', async (req, res) => {
     }
 });
 
+// 6. Consultation with Lecturer - Create or get a "ghost group"
 router.post('/consultation', async (req, res) => {
     const { originGroupId, lecturerId } = req.body;
 
     try {
-        // 1. Check if a consultation group already exists for this origin group
-        // We use the "purpose" and a naming convention to find it
-        let consultGroup = await StudyGroup.findOne({ 
-            courseId: originGroupId, // Temporarily using courseId or a new field to link them
-            purpose: 'other', // Or add 'consultation' to your Enum
-            name: { $regex: /Consultation$/ } 
+        // Check if consultation group already exists
+        let consultGroup = await StudyGroup.findOne({
+            purpose: 'lecturer_consultation',
+            _consultationOrigin: originGroupId,
+            'members.userId': lecturerId
         });
 
         if (consultGroup) return res.json(consultGroup);
 
-        // 2. Otherwise, fetch the original group to copy members
+        // Fetch the original group to copy members
         const original = await StudyGroup.findById(originGroupId);
         if (!original) return res.status(404).json({ message: "Original group not found" });
 
-        // 3. Create the new "Fresh" group
+        // Create consultation group with all original members + lecturer
+        const allMembers = original.members.map(m => ({
+            userId: m.userId,
+            role: m.role,
+            status: 'active',
+            joinedAt: new Date()
+        }));
+
+        // Add lecturer as admin
+        allMembers.push({
+            userId: lecturerId,
+            role: 'admin',
+            status: 'active',
+            joinedAt: new Date()
+        });
+
         const newGroup = new StudyGroup({
-            name: `${original.name} - Consultation`,
+            name: `Consultation: ${original.name}`,
             courseId: original.courseId,
-            purpose: 'other',
-            members: [
-                ...original.members,
-                { userId: lecturerId, role: 'admin', status: 'active' } // Add the Lecturer
-            ]
+            purpose: 'lecturer_consultation',
+            members: allMembers,
+            _consultationOrigin: originGroupId
         });
 
         const saved = await newGroup.save();
+
+        // Notify the lecturer
+        await new Notification({
+            userId: lecturerId,
+            title: "Consultation Request",
+            message: `Group "${original.name}" wants to consult with you`,
+            type: "consultation_request",
+            relatedId: saved._id,
+            dedupeKey: `consult_${saved._id}_${Date.now()}`
+        }).save().catch(e => console.error(e));
+
         res.status(201).json(saved);
     } catch (error) {
-        res.status(500).json({ message: "Failed to set up consultation" });
+        res.status(500).json({ message: "Failed to set up consultation", error: error.message });
     }
 });
 

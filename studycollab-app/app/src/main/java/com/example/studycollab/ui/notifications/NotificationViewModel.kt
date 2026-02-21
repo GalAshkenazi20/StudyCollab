@@ -28,6 +28,13 @@ class NotificationViewModel : ViewModel() {
 
     init {
         loadNotifications()
+        // Poll every 30 seconds for new notifications
+        viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(30_000)
+                loadNotifications()
+            }
+        }
     }
 
     /**

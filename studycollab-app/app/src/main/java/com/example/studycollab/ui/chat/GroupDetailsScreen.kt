@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.studycollab.data.model.getLecturerName
 import com.example.studycollab.data.model.getParticipantId
+import com.example.studycollab.data.remote.ApiClient
 import com.example.studycollab.ui.Screen
 import com.example.studycollab.ui.courses.ModernActionButton
 import com.example.studycollab.utils.UserSession
@@ -48,9 +49,6 @@ fun GroupDetailsScreen(
     val isAdmin = group?.members?.any {
         it.getParticipantId() == currentUserId && it.role == "admin"
     } == true
-
-    // Fetch actual lecturer name via our model helper
-    val realLecturerName = group?.getLecturerName()
 
     LaunchedEffect(Unit) { visible = true }
 
@@ -81,7 +79,7 @@ fun GroupDetailsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // --- Purpose Card (Preserved description logic) ---
+                // --- Purpose Card ---
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
@@ -101,7 +99,6 @@ fun GroupDetailsScreen(
                             text = g.purpose ?: "No purpose specified",
                             style = MaterialTheme.typography.bodyLarge
                         )
-                        // PRESERVED FEATURE: Conditional description display
                         if (!g.description.isNullOrEmpty()) {
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(text = g.description, style = MaterialTheme.typography.bodyMedium)
@@ -149,7 +146,7 @@ fun GroupDetailsScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // --- EXTERNAL COLLABORATION SECTION ---
+                // --- EXTERNAL SUPPORT SECTION ---
                 Text(
                     text = "External Support",
                     style = MaterialTheme.typography.titleLarge,
@@ -157,47 +154,29 @@ fun GroupDetailsScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val displayName = realLecturerName ?: "Lecturer"
-                val encodedName = Uri.encode(displayName)
-
                 ModernActionButton("Consult with Lecturer", Icons.Default.CastForEducation) {
-                    // We assume the lecturerId is part of the course object or group object
-                    // If you don't have it yet, you might need to fetch it from courseId first
-                    val lecturerId = group?.courseId?.asJsonObject?.get("creatorId")?.asString ?: ""
+                    scope.launch {
+                        try {
+                            val rawCourseId = g.courseId?.toString()?.filter { it.isLetterOrDigit() } ?: ""
 
-                    if (lecturerId.isNotEmpty()) {
-                        scope.launch {
-                            try {
-                                // We call the API to create/get the "Ghost Group" for consultation
+                            val lecturerResponse = ApiClient.apiService.getCourseLecturer(rawCourseId)
+                            if (lecturerResponse.isSuccessful) {
+                                val lecturerId = lecturerResponse.body()?.get("lecturerId") ?: ""
+                                val lecturerName = lecturerResponse.body()?.get("name") ?: "Lecturer"
+
                                 val response = viewModel.setupConsultation(groupId, lecturerId)
                                 if (response != null) {
-                                    // Navigate using the NEWly created ObjectId for the fresh room
+                                    val encodedName = Uri.encode(lecturerName)
                                     navController.navigate("chat/lecturer_consultation/${response._id}/$encodedName")
                                 } else {
-                                    Toast.makeText(context, "Could not initialize consultation", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Could not start consultation", Toast.LENGTH_SHORT).show()
                                 }
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Lecturer not found for this course", Toast.LENGTH_SHORT).show()
                             }
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
-                    } else {
-                        Toast.makeText(context, "Lecturer information not found", Toast.LENGTH_SHORT).show()
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-// 2. Consultation with other groups
-                ModernActionButton("Consult Peer Groups", Icons.Default.Groups) {
-                    // Extract clean courseId
-                    val rawCourseId = g.courseId?.toString() ?: ""
-                    val cleanCourseId = rawCourseId.filter { it.isLetterOrDigit() }
-
-                    if (cleanCourseId.isNotEmpty()) {
-                        // We pass the cleanCourseId so the PeerScreen can fetch ALL groups for this course
-                        navController.navigate("course_groups_consultation/$cleanCourseId/$groupId")
-                    } else {
-                        Toast.makeText(context, "Course data missing", Toast.LENGTH_SHORT).show()
                     }
                 }
 
@@ -207,7 +186,6 @@ fun GroupDetailsScreen(
                     Text(text = "Administration", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // PRESERVED FEATURE: Add Members Button
                     OutlinedButton(
                         onClick = { /* Add Members Logic */ },
                         modifier = Modifier.fillMaxWidth().height(56.dp),

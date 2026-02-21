@@ -7,7 +7,6 @@ import retrofit2.Response
 import retrofit2.http.*
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
-import com.example.studycollab.data.model.LecturerInfo
 
 interface ApiService {
 
@@ -82,6 +81,18 @@ interface ApiService {
         @Part("groupId") groupId: RequestBody
     ): Response<Submission>
 
+    // --- Notification Preferences ---
+    @GET("auth/preferences/{userId}")
+    suspend fun getNotificationPreferences(
+        @Path("userId") userId: String
+    ): Response<NotificationPreferences>
+
+    @PUT("auth/preferences/{userId}")
+    suspend fun updateNotificationPreferences(
+        @Path("userId") userId: String,
+        @Body preferences: NotificationPreferences
+    ): Response<NotificationPreferences>
+
     // --- Study Group Endpoints ---
     @GET("api/groups/user/{userId}")
     suspend fun getUserGroups(@Path("userId") userId: String): Response<List<StudyGroup>>
@@ -94,6 +105,21 @@ interface ApiService {
 
     @HTTP(method = "DELETE", path = "api/groups/{groupId}", hasBody = true)
     suspend fun deleteGroup(@Path("groupId") id: String, @Body body: Map<String, String>): Response<ResponseBody>
+
+    @GET("api/groups/course/{courseId}")
+    suspend fun getGroupsByCourse(
+        @Path("courseId") courseId: String
+    ): Response<List<StudyGroup>>
+
+    @POST("api/groups/consultation")
+    suspend fun setupConsultation(
+        @Body data: Map<String, String>
+    ): Response<StudyGroup>
+
+    @GET("api/courses/{courseId}/lecturer")
+    suspend fun getCourseLecturer(
+        @Path("courseId") courseId: String
+    ): Response<Map<String, String>>
 
     // --- Course & Student Endpoints ---
     @GET("api/courses/user/{userId}")
@@ -109,7 +135,7 @@ interface ApiService {
     @DELETE("api/notifications/{id}")
     suspend fun deleteNotification(@Path("id") id: String): Response<Unit>
 
-    // --- Chat Endpoints (NEW) ---
+    // --- Chat Endpoints ---
     @GET("api/messages/{groupId}")
     suspend fun getGroupMessages(@Path("groupId") groupId: String): Response<List<Message>>
 
@@ -127,56 +153,16 @@ interface ApiService {
         @Path("assignmentId") assignmentId: String
     ): Response<GroupAssignmentWork>
 
-    // --- Get all lecturers (for student to pick from) ---
+    // --- Lecturers list (for student office hours) ---
     @GET("auth/lecturers")
     suspend fun getAllLecturers(): Response<List<LecturerInfo>>
 
-    // --- Get available (unbooked) slots for a lecturer ---
+    // --- Office Hours ---
     @GET("api/office-hours/available/{lecturerId}")
     suspend fun getAvailableOfficeHours(
         @Path("lecturerId") lecturerId: String
     ): Response<List<SlotInfo>>
 
-    @POST("api/group-work/{workId}/subtasks")
-    suspend fun addSubTask(
-        @Path("workId") workId: String,
-        @Body taskData: Map<String, String> // title, assignedTo, adminId, groupId, assignmentId
-    ): Response<GroupAssignmentWork>
-
-    @PATCH("api/group-work/{workId}/subtasks/{subTaskId}/complete")
-    suspend fun completeSubTask(
-        @Path("workId") workId: String,
-        @Path("subTaskId") subTaskId: String,
-        @Body body: Map<String, String> // ADD THIS to accept the userId/completedBy data
-    ): Response<GroupAssignmentWork>
-
-    @PATCH("api/group-work/{workId}/subtasks/{subTaskId}/approve")
-    suspend fun approveSubTask(
-        @Path("workId") workId: String,
-        @Path("subTaskId") subTaskId: String,
-        @Body adminData: Map<String, String> // adminId
-    ): Response<GroupAssignmentWork>
-
-    // --- ADDED: Sub-task Deletion (Admin Only) ---
-    @DELETE("api/group-work/{workId}/subtasks/{subTaskId}")
-    suspend fun deleteSubTask(
-        @Path("workId") workId: String,
-        @Path("subTaskId") subTaskId: String
-    ): Response<GroupAssignmentWork>
-
-    // In com.example.studycollab.data.remote.ApiService
-    @GET("submissions/assignment/{assignmentId}")
-    suspend fun getSubmissionsForAssignment(
-        @Path("assignmentId") assignmentId: String
-    ): Response<List<Submission>>
-
-    @PATCH("submissions/{submissionId}/grade")
-    suspend fun updateGrade(
-        @Path("submissionId") submissionId: String,
-        @Body data: Map<String, String>
-    ): Response<Submission>
-
-    // In com.example.studycollab.data.remote.ApiService
     @GET("api/office-hours/lecturer/{lecturerId}")
     suspend fun getOfficeHours(@Path("lecturerId") lecturerId: String): Response<List<SlotInfo>>
 
@@ -188,12 +174,43 @@ interface ApiService {
 
     @DELETE("api/office-hours/{slotId}")
     suspend fun deleteOfficeHour(@Path("slotId") slotId: String): Response<Unit>
-    
-    // 1. Peer Consultation: Get all groups belonging to a specific course
-    @GET("api/groups/course/{courseId}")
-    suspend fun getGroupsByCourse(@Path("courseId") courseId: String): Response<List<StudyGroup>>
 
-    // 2. Lecturer Consultation: Create or retrieve a specialized "Ghost Group" for consultation
-    @POST("api/groups/consultation")
-    suspend fun setupConsultation(@Body request: Map<String, String>): Response<StudyGroup>
+    // --- Group Work Sub-tasks ---
+    @POST("api/group-work/{workId}/subtasks")
+    suspend fun addSubTask(
+        @Path("workId") workId: String,
+        @Body taskData: Map<String, String>
+    ): Response<GroupAssignmentWork>
+
+    @PATCH("api/group-work/{workId}/subtasks/{subTaskId}/complete")
+    suspend fun completeSubTask(
+        @Path("workId") workId: String,
+        @Path("subTaskId") subTaskId: String,
+        @Body body: Map<String, String>
+    ): Response<GroupAssignmentWork>
+
+    @PATCH("api/group-work/{workId}/subtasks/{subTaskId}/approve")
+    suspend fun approveSubTask(
+        @Path("workId") workId: String,
+        @Path("subTaskId") subTaskId: String,
+        @Body adminData: Map<String, String>
+    ): Response<GroupAssignmentWork>
+
+    @DELETE("api/group-work/{workId}/subtasks/{subTaskId}")
+    suspend fun deleteSubTask(
+        @Path("workId") workId: String,
+        @Path("subTaskId") subTaskId: String
+    ): Response<GroupAssignmentWork>
+
+    // --- Submissions ---
+    @GET("submissions/assignment/{assignmentId}")
+    suspend fun getSubmissionsForAssignment(
+        @Path("assignmentId") assignmentId: String
+    ): Response<List<Submission>>
+
+    @PATCH("submissions/{submissionId}/grade")
+    suspend fun updateGrade(
+        @Path("submissionId") submissionId: String,
+        @Body data: Map<String, String>
+    ): Response<Submission>
 }

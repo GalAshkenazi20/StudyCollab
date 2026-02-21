@@ -68,7 +68,7 @@ fun LecturerDashboardScreen(navController: NavController) {
                     }
                     item {
                         ModernDashboardCard("Oversight", Icons.Default.Groups, MaterialTheme.colorScheme.secondary) {
-                            navController.navigate(Screen.StudyGroups.route)
+                            navController.navigate("lecturer_group_oversight")
                         }
                     }
                     item {
