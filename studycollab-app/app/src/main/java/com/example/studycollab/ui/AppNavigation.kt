@@ -36,6 +36,7 @@ fun AppNavigation() {
     val scope = rememberCoroutineScope()
 
     // Shared ViewModels - Preserved
+    val authViewModel: AuthViewModel = viewModel()
     val studyViewModel: StudyGroupViewModel = viewModel()
     val assignmentViewModel: AssignmentViewModel = viewModel()
     val notifViewModel: NotificationViewModel = viewModel()
@@ -132,11 +133,15 @@ fun AppNavigation() {
         ) { innerPadding ->
             NavHost(
                 navController = navController,
-                startDestination = Screen.Login.route,
+                startDestination = Screen.Splash.route,
                 modifier = Modifier.padding(if (showHeader) innerPadding else PaddingValues(0.dp)),
                 enterTransition = { fadeIn(tween(400)) + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(400)) },
                 exitTransition = { fadeOut(tween(400)) + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(400)) }
             ) {
+
+                composable(Screen.Splash.route) {
+                    SplashScreen(navController = navController, viewModel = authViewModel)
+                }
                 // --- AUTHENTICATION ---
                 composable(Screen.Login.route) {
                     // FIXED: Added 'navController' as the second parameter

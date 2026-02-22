@@ -28,7 +28,7 @@ import com.google.android.gms.location.LocationServices
 import java.util.*
 
 @Composable
-fun SplashScreen(navController: NavController) {
+fun SplashScreen(navController: NavController, viewModel: AuthViewModel) {
     val context = LocalContext.current
     val activity = context as? Activity
 
@@ -37,6 +37,18 @@ fun SplashScreen(navController: NavController) {
     var isLocationVerified by remember { mutableStateOf(false) }
     var isCheckingLocation by remember { mutableStateOf(true) }
     var showErrorDialog by remember { mutableStateOf<String?>(null) }
+
+    val currentUser = viewModel.currentUser
+
+    // Initialize MSAL and watch for login success
+    LaunchedEffect(currentUser) {
+        viewModel.initMsal(context)
+        if (currentUser != null) {
+            navController.navigate("dashboard") {
+                popUpTo(Screen.Splash.route) { inclusive = true }
+            }
+        }
+    }
 
     // 1. Permission Launcher
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -153,7 +165,11 @@ fun SplashScreen(navController: NavController) {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     OutlinedButton(
-                        onClick = { Toast.makeText(context, "TODO: MS Auth Implementation", Toast.LENGTH_SHORT).show() },
+                        onClick = {
+                            if (activity != null) {
+                                viewModel.loginWithMicrosoft(activity)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         border = ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp),

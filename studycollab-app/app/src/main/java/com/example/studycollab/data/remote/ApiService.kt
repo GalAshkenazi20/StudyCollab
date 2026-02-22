@@ -14,6 +14,9 @@ interface ApiService {
     @POST("auth/login")
     suspend fun loginUser(@Body credentials: Map<String, String>): User
 
+    @POST("auth/microsoft-login")
+    suspend fun microsoftLogin(@Body request: Map<String, String>): Response<User>
+
     // --- Course Topics (Lecturer) ---
     @PUT("api/courses/{courseId}/topics/{topicIndex}/toggle")
     suspend fun toggleTopic(
