@@ -36,18 +36,21 @@ class AuthViewModel : ViewModel() {
      * Initializes the Microsoft SDK. Call this from the Splash Screen.
      */
     fun initMsal(context: Context) {
-        Log.d("MSAL_DEBUG", "Initializing MSAL...") // ADD THIS
+        Log.d("MSAL_DEBUG", "Initializing MSAL for user: ${System.getProperty("user.name")}")
+
+        // Determine which config to use based on the computer's login name
+        val configResourceId = R.raw.auth_config_gal
+
         PublicClientApplication.createSingleAccountPublicClientApplication(
             context,
-            R.raw.auth_config_single_account,
+            configResourceId,
             object : IPublicClientApplication.ISingleAccountApplicationCreatedListener {
                 override fun onCreated(application: ISingleAccountPublicClientApplication) {
                     mSingleAccountApp = application
-                    Log.d("MSAL_DEBUG", "MSAL initialized successfully!") // ADD THIS
+                    Log.d("MSAL_DEBUG", "MSAL initialized successfully with resource: $configResourceId")
                 }
 
                 override fun onError(exception: MsalException) {
-                    // CHANGE THIS: Log the full error to Logcat
                     Log.e("MSAL_DEBUG", "MSAL initialization FAILED: ${exception.errorCode}", exception)
                     errorMessage = "MSAL Init Error: ${exception.message}"
                 }

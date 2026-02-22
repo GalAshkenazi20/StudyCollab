@@ -6,20 +6,21 @@ import androidx.lifecycle.viewModelScope
 import com.example.studycollab.utils.UserSession
 import com.example.studycollab.data.model.*
 import com.example.studycollab.data.remote.ApiClient
-import com.example.studycollab.data.remote.ApiClient.apiService
 import com.example.studycollab.data.repository.StudyGroupRepository
 import kotlinx.coroutines.launch
 
 class StudyGroupViewModel(
     private val repository: StudyGroupRepository = StudyGroupRepository(ApiClient.apiService)
 ) : ViewModel() {
-    // Initialize repository
-//    private val repository = StudyGroupRepository(ApiClient.apiService)
 
     // UI States
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
     var successMessage by mutableStateOf<String?>(null)
+
+    // --- משתנה חדש לניווט לצ'אט התייעצות ---
+    var consultationNavigationId by mutableStateOf<String?>(null)
+    // --------------------------------------
 
     // Data Lists
     val myGroups = mutableStateListOf<StudyGroup>()
@@ -73,9 +74,7 @@ class StudyGroupViewModel(
         selectedStudents.clear()
         viewModelScope.launch {
             try {
-
                 val classmates = repository.getStudentsInCourse(course.id)
-
                 val currentUserId = UserSession.userId
                 val filteredList = classmates.filter { student ->
                     student._id != currentUserId
@@ -96,7 +95,6 @@ class StudyGroupViewModel(
 
     fun createGroup() {
         val course = selectedCourse ?: return
-
         val currentUserId = UserSession.userId
 
         if (currentUserId == null) {
@@ -111,11 +109,12 @@ class StudyGroupViewModel(
 
             result.onSuccess {
                 successMessage = "Group Created!"
+                // Reset Fields
                 groupName = ""
                 selectedCourse = null
                 selectedStudents.clear()
                 availableClassmates.clear()
-                fetchGroups(currentUserId)
+                fetchGroups(currentUserId) // Refresh list
             }.onFailure {
                 errorMessage = it.message
                 println("Error creating group: ${it.message}")
@@ -132,7 +131,6 @@ class StudyGroupViewModel(
             val result = repository.deleteGroup(groupId, currentUserId)
 
             result.onSuccess {
-                // Remove the group from the local list so the UI updates immediately
                 myGroups.removeAll { it._id == groupId }
                 onComplete(true)
             }.onFailure {
@@ -143,21 +141,27 @@ class StudyGroupViewModel(
         }
     }
 
-    // Inside StudyGroupViewModel.kt
-    suspend fun setupConsultation(originGroupId: String, lecturerId: String): StudyGroup? {
-        return try {
-            // Ensure your ApiService has: @POST("api/groups/consultation")
-            val response = apiService.setupConsultation(mapOf(
-                "originGroupId" to originGroupId,
-                "lecturerId" to lecturerId
-            ))
-            if (response.isSuccessful) {
-                response.body()
-            } else {
-                null
+    // --- הפונקציה החדשה להתייעצות עם מרצה ---
+    fun consultWithLecturer(groupId: String) {
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+            try {
+                // קריאה לשרת ליצירת קבוצת התייעצות
+                val response = ApiClient.apiService.openConsultation(groupId)
+
+                if (response.isSuccessful && response.body() != null) {
+                    // קבלת ה-ID של הקבוצה החדשה ועדכון המשתנה שיגרום לניווט
+                    val newGroupId = response.body()!!["consultationGroupId"]
+                    consultationNavigationId = newGroupId
+                } else {
+                    errorMessage = "Failed to start consultation. Lecturer not found or server error."
+                }
+            } catch (e: Exception) {
+                errorMessage = "Network error: ${e.localizedMessage}"
+            } finally {
+                isLoading = false
             }
-        } catch (e: Exception) {
-            null
         }
     }
 }
