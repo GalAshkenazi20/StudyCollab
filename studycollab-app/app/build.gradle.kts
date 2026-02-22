@@ -93,6 +93,9 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.11.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    implementation("com.microsoft.identity.client:msal:5.4.0") {
+        exclude(group = "com.microsoft.device.display", module = "display-mask")
+    }
 }
 
 // Resolution strategy removed - using pure Compose UI testing without Espresso

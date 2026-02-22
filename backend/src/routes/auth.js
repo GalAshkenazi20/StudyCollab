@@ -68,4 +68,30 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// Add this route near your other login routes
+router.post('/microsoft-login', async (req, res) => {
+    const { email } = req.body;
+    
+    console.log(`Microsoft login link attempt for: ${email}`); 
+
+    try {
+        // Find the user in your mock database using the university email returned by Microsoft
+        const user = await User.findOne({ "university.email": email });
+
+        if (!user) {
+            console.log("Microsoft user not found in mock database");
+            return res.status(404).json({ 
+                message: "No university account found matching this Microsoft login." 
+            });
+        }
+
+        // Return the full user object so the app inherits the mock user's data (role, groups, etc.)
+        res.json(user);
+
+    } catch (error) {
+        console.error("Microsoft login error:", error);
+        res.status(500).json({ message: "Server error during Microsoft authentication." });
+    }
+});
+
 module.exports = router;
