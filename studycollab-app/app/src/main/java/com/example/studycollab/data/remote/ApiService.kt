@@ -114,6 +114,11 @@ interface ApiService {
         @Path("courseId") courseId: String
     ): Response<List<StudyGroup>>
 
+    // --- הוספנו את הפונקציה הזו לפתיחת התייעצות ---
+    @POST("api/groups/{groupId}/consult")
+    suspend fun openConsultation(@Path("groupId") groupId: String): Response<Map<String, String>>
+    // ---------------------------------------------
+
     @POST("api/groups/consultation")
     suspend fun setupConsultation(
         @Body data: Map<String, String>
@@ -216,4 +221,12 @@ interface ApiService {
         @Path("submissionId") submissionId: String,
         @Body data: Map<String, String>
     ): Response<Submission>
+
+    // --- הוסף את זה אם חסר לך כדי למשוך את כל הקורסים עבור CreateGroupScreen ---
+    @GET("api/courses")
+    suspend fun getAllCourses(): Response<List<Course>>
+
+    // --- הוסף את זה אם חסר לך כדי למשוך קורסים של סטודנט ספציפי ---
+    @GET("api/courses/student/{studentId}")
+    suspend fun getStudentCourses(@Path("studentId") studentId: String): Response<List<Course>>
 }

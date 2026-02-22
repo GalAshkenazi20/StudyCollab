@@ -1,6 +1,5 @@
 package com.example.studycollab.ui.chat
 
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -13,22 +12,18 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.studycollab.data.model.getLecturerName
-import com.example.studycollab.data.model.getParticipantId
-import com.example.studycollab.data.remote.ApiClient
 import com.example.studycollab.ui.Screen
-import com.example.studycollab.ui.courses.ModernActionButton
 import com.example.studycollab.utils.UserSession
-import com.example.studycollab.utils.mouseWheelScroll
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupDetailsScreen(
     groupId: String,
@@ -37,187 +32,217 @@ fun GroupDetailsScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
-    val scope = rememberCoroutineScope()
     var visible by remember { mutableStateOf(false) }
 
-    // Finding the group based on robust string comparison
+    // ניקוי ID מגרשיים אם יש
+    val cleanGroupId = groupId.replace("\"", "")
+
+    // מציאת הקבוצה בצורה בטוחה
     val group = viewModel.myGroups.find { g ->
-        g._id.toString().filter { it.isLetterOrDigit() }.contains(groupId.filter { it.isLetterOrDigit() })
+        g._id.toString().replace("\"", "") == cleanGroupId
     }
 
     val currentUserId = UserSession.userId ?: ""
+
+    // בדיקת אדמין בטוחה
     val isAdmin = group?.members?.any {
-        it.getParticipantId() == currentUserId && it.role == "admin"
+        it.userId.toString().replace("\"", "") == currentUserId && it.role == "admin"
     } == true
+
+    // מאזין לניווט לצ'אט התייעצות
+    LaunchedEffect(viewModel.consultationNavigationId) {
+        viewModel.consultationNavigationId?.let { newChatId ->
+            navController.navigate(Screen.ChatRoom.createRoute(newChatId))
+            viewModel.consultationNavigationId = null
+        }
+    }
 
     LaunchedEffect(Unit) { visible = true }
 
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(tween(500)) + slideInVertically(initialOffsetY = { 30 })
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .mouseWheelScroll(scrollState)
-                .verticalScroll(scrollState)
-                .padding(20.dp)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Study Group Details") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(tween(500)) + slideInVertically(initialOffsetY = { 30 }),
+            modifier = Modifier.padding(padding)
         ) {
-            group?.let { g ->
-                // --- Modern Header ---
-                Text(
-                    text = "STUDY GROUP",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = g.name ?: "Group Details",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-1).sp
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // --- Purpose Card ---
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(20.dp)
+            ) {
+                if (group != null) {
+                    // --- כותרת ---
+                    Text(
+                        text = "STUDY GROUP",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
                     )
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            text = "Purpose",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
+                    Text(
+                        text = group.name,
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-1).sp
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // --- כרטיס מטרה ---
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = g.purpose ?: "No purpose specified",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        if (!g.description.isNullOrEmpty()) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(text = g.description, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Text(
-                    text = "Collaboration Tools",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // --- CORE ACTION BUTTONS ---
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(
-                        onClick = { navController.navigate(Screen.GroupTasks.createRoute(groupId)) },
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Assignment, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Tasks")
-                    }
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            Text(
+                                text = "Purpose",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = group.purpose ?: "General Purpose",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
 
-                    Button(
-                        onClick = { navController.navigate(Screen.ChatRoom.createRoute(groupId)) },
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Chat, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Chat")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                ModernActionButton("Participants", Icons.Default.People) {
-                    navController.navigate(Screen.Participants.createRoute(groupId))
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // --- EXTERNAL SUPPORT SECTION ---
-                Text(
-                    text = "External Support",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ModernActionButton("Consult with Lecturer", Icons.Default.CastForEducation) {
-                    scope.launch {
-                        try {
-                            val rawCourseId = g.courseId?.toString()?.filter { it.isLetterOrDigit() } ?: ""
-
-                            val lecturerResponse = ApiClient.apiService.getCourseLecturer(rawCourseId)
-                            if (lecturerResponse.isSuccessful) {
-                                val lecturerId = lecturerResponse.body()?.get("lecturerId") ?: ""
-                                val lecturerName = lecturerResponse.body()?.get("name") ?: "Lecturer"
-
-                                val response = viewModel.setupConsultation(groupId, lecturerId)
-                                if (response != null) {
-                                    val encodedName = Uri.encode(lecturerName)
-                                    navController.navigate("chat/lecturer_consultation/${response._id}/$encodedName")
-                                } else {
-                                    Toast.makeText(context, "Could not start consultation", Toast.LENGTH_SHORT).show()
-                                }
-                            } else {
-                                Toast.makeText(context, "Lecturer not found for this course", Toast.LENGTH_SHORT).show()
+                            // התיקון הגדול: הצגה בטוחה של Description
+                            if (!group.description.isNullOrEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = group.description!!,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                             }
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
-                }
 
-                // --- ADMINISTRATION SECTION ---
-                if (isAdmin) {
-                    Spacer(modifier = Modifier.height(40.dp))
-                    Text(text = "Administration", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Text(
+                        text = "Collaboration Tools",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    OutlinedButton(
-                        onClick = { /* Add Members Logic */ },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(Icons.Default.PersonAdd, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Add Members")
+                    // --- כפתורים ראשיים ---
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = { navController.navigate(Screen.GroupTasks.createRoute(cleanGroupId)) },
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Assignment, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Tasks")
+                        }
+
+                        Button(
+                            onClick = { navController.navigate(Screen.ChatRoom.createRoute(cleanGroupId)) },
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Chat, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Chat")
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Button(
-                        onClick = {
-                            viewModel.deleteGroup(groupId = groupId, onComplete = {
-                                navController.popBackStack()
-                            })
-                        },
+                    OutlinedButton(
+                        onClick = { navController.navigate(Screen.Participants.createRoute(cleanGroupId)) },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        Icon(Icons.Default.Delete, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Delete Group")
+                        Icon(Icons.Default.Group, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Participants")
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // --- תמיכה חיצונית (מרצה) ---
+                    Text(
+                        text = "External Support",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.consultWithLecturer(cleanGroupId)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = !viewModel.isLoading
+                    ) {
+                        if (viewModel.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Connecting...")
+                        } else {
+                            Icon(Icons.Default.School, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Consult with Lecturer")
+                        }
+                    }
+
+                    if (viewModel.errorMessage != null) {
+                        Text(
+                            text = viewModel.errorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+
+                    // --- ניהול (Admin) ---
+                    if (isAdmin) {
+                        Spacer(modifier = Modifier.height(40.dp))
+                        Text(text = "Administration", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = {
+                                viewModel.deleteGroup(groupId = cleanGroupId, onComplete = {
+                                    navController.popBackStack()
+                                })
+                            },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Icon(Icons.Default.Delete, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Delete Group")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(100.dp))
+
+                } else {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Group info not found.")
                     }
                 }
-
-                Spacer(modifier = Modifier.height(100.dp))
-
-            } ?: Box(modifier = Modifier.fillMaxSize()) {
-                Text("Group info not found. Return to list and try again.", modifier = Modifier.padding(20.dp))
             }
         }
     }

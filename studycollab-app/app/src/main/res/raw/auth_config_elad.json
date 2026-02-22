@@ -1,0 +1,17 @@
+
+{
+  "client_id" : "760de431-e896-4ffd-9c18-376960c755bb",
+  "authorization_user_agent" : "DEFAULT",
+  "redirect_uri" : "msauth://com.example.studycollab/uV9rT6YvUVGfP6ZvlfiSylp4H44%3D",
+  "account_mode": "SINGLE",
+  "broker_redirect_uri_registered": true,
+  "authorities" : [
+    {
+      "type": "AAD",
+      "audience": {
+        "type": "AzureADandPersonalMicrosoftAccount",
+        "tenant_id": "common"
+      }
+    }
+  ]
+}
