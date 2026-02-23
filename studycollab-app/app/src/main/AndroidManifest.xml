@@ -39,7 +39,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="msauth"
                     android:host="com.example.studycollab"
-                    android:path="/bp3Ki1CDPzURlbUjyYw2ipqFgTg=" />
+                    android:path="/uV9rT6YvUVGfP6ZvlfiSylp4H44=" />
 <!--                    android:path(elad)="/uV9rT6YvUVGfP6ZvlfiSylp4H44=" -->
             </intent-filter>
         </activity>

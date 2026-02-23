@@ -16,6 +16,14 @@ const studyGroupSchema = new mongoose.Schema({
         enum: ['assignment_submission', 'exam_study', 'general', 'other'],
         default: 'general'
     },
+    isConsultationChat: { 
+        type: Boolean, 
+        default: false 
+    },
+    parentGroupId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'StudyGroup' 
+    },
     members: [{
         userId: {
             type: mongoose.Schema.Types.ObjectId,

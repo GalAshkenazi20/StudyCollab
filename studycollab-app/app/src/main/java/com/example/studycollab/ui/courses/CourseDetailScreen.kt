@@ -61,6 +61,15 @@ fun CourseDetailScreen(
                     letterSpacing = (-1).sp
                 )
 
+                c.lecturerName?.let { name ->
+                    Text(
+                        text = "Lecturer: $name",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Modern Progress Card

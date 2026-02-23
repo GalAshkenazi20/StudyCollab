@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
-  groupId: {
+  chatRoomId: { 
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'StudyGroup',
+    ref: 'ChatRoom',
     required: true
   },
   senderId: {
