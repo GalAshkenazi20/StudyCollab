@@ -12,9 +12,9 @@ import javax.inject.Singleton
 class ChatRepository @Inject constructor(
     private val apiService: ApiService
 ) {
-    suspend fun getMessages(groupId: String): Result<List<Message>> {
+    suspend fun getMessages(chatRoomId: String): Result<List<Message>> {
         return try {
-            val response = apiService.getGroupMessages(groupId)
+            val response = apiService.getChatMessages(chatRoomId)
 
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
@@ -27,9 +27,9 @@ class ChatRepository @Inject constructor(
         }
     }
 
-    suspend fun sendMessage(groupId: String, senderId: String, senderName: String, content: String): Result<Message> {
+    suspend fun sendMessage(chatRoomId: String, senderId: String, senderName: String, content: String): Result<Message> {
         return try {
-            val request = SendMessageRequest(groupId, senderId, senderName, content)
+            val request = SendMessageRequest(chatRoomId, senderId, senderName, content)
             val response = apiService.sendMessage(request)
 
             if (response.isSuccessful && response.body() != null) {

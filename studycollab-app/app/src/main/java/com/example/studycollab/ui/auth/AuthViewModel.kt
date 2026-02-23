@@ -39,7 +39,7 @@ class AuthViewModel : ViewModel() {
         Log.d("MSAL_DEBUG", "Initializing MSAL for user: ${System.getProperty("user.name")}")
 
         // Determine which config to use based on the computer's login name
-        val configResourceId = R.raw.auth_config_gal
+        val configResourceId = R.raw.auth_config_elad
 
         PublicClientApplication.createSingleAccountPublicClientApplication(
             context,

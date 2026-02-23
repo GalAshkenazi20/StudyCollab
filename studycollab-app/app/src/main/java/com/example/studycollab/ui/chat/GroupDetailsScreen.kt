@@ -49,11 +49,15 @@ fun GroupDetailsScreen(
         it.userId.toString().replace("\"", "") == currentUserId && it.role == "admin"
     } == true
 
-    // מאזין לניווט לצ'אט התייעצות
-    LaunchedEffect(viewModel.consultationNavigationId) {
-        viewModel.consultationNavigationId?.let { newChatId ->
-            navController.navigate(Screen.ChatRoom.createRoute(newChatId))
-            viewModel.consultationNavigationId = null
+    LaunchedEffect(viewModel.consultationTargetRoute) {
+        viewModel.consultationTargetRoute?.let { route ->
+            // Use a single Log to track all navigation attempts
+            android.util.Log.d("GroupDetails_Debug", "Navigating to: $route")
+
+            navController.navigate(route)
+
+            // IMPORTANT: Reset the state so the navigation doesn't re-trigger on recomposition
+            viewModel.consultationTargetRoute = null
         }
     }
 
@@ -152,13 +156,21 @@ fun GroupDetailsScreen(
                         }
 
                         Button(
-                            onClick = { navController.navigate(Screen.ChatRoom.createRoute(cleanGroupId)) },
+                            onClick = {
+                                // Resolve the standard room ID before navigating
+                                viewModel.openStandardChat(cleanGroupId)
+                            },
                             modifier = Modifier.weight(1f).height(56.dp),
-                            shape = RoundedCornerShape(16.dp)
+                            shape = RoundedCornerShape(16.dp),
+                            enabled = !viewModel.isLoading // Prevent multiple clicks
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.Chat, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Chat")
+                            if (viewModel.isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.AutoMirrored.Filled.Chat, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Chat")
+                            }
                         }
                     }
 

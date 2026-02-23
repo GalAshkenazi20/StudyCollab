@@ -195,13 +195,20 @@ fun AppNavigation() {
 
                 // --- CONSULTATION ROUTES (Integrated with Named Arguments) ---
                 composable(
-                    route = "chat/lecturer_consultation/{groupId}/{lecturerName}",
-                    arguments = listOf(navArgument("groupId"){type=NavType.StringType}, navArgument("lecturerName"){type=NavType.StringType})
+                    route = "chat/lecturer_consultation/{roomId}/{lecturerName}",
+                    arguments = listOf(
+                        navArgument("roomId") { type = NavType.StringType },
+                        navArgument("lecturerName") { type = NavType.StringType }
+                    )
                 ) { b ->
+                    val roomId = b.arguments?.getString("roomId") ?: ""
+                    // Fallback here ensures the ChatScreen header always has a string
+                    val lecturerName = b.arguments?.getString("lecturerName") ?: "Lecturer"
+
                     ChatScreen(
                         navController = navController,
-                        groupId = b.arguments?.getString("groupId") ?: "",
-                        consultationName = b.arguments?.getString("lecturerName") ?: "Lecturer",
+                        groupId = roomId, // This is passed to ChatViewModel as currentRoomId
+                        consultationName = lecturerName,
                         isConsultation = true
                     )
                 }
@@ -238,6 +245,15 @@ fun AppNavigation() {
                 }
                 composable(Screen.Chats.route) { ChatListScreen(navController) }
                 composable(Screen.Timetable.route) { TimeTableScreen(navController) }
+                composable("lecturer_consultations_list") {
+                    // We can share the ViewModel instance here
+                    val chatVM: LecturerChatViewModel = viewModel()
+
+                    LecturerConsultationsListScreen(
+                        navController = navController,
+                        viewModel = chatVM
+                    )
+                }
             }
         }
     }

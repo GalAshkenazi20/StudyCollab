@@ -8,6 +8,8 @@ import com.example.studycollab.data.model.*
 import com.example.studycollab.data.remote.ApiClient
 import com.example.studycollab.data.repository.StudyGroupRepository
 import kotlinx.coroutines.launch
+import android.util.Log
+import com.example.studycollab.ui.Screen
 
 class StudyGroupViewModel(
     private val repository: StudyGroupRepository = StudyGroupRepository(ApiClient.apiService)
@@ -141,23 +143,65 @@ class StudyGroupViewModel(
         }
     }
 
-    // --- הפונקציה החדשה להתייעצות עם מרצה ---
+    private val TAG = "StudyGroupVM_Debug"
+
+    // This is the variable the Screen is observing for navigation
+    var consultationTargetRoute by mutableStateOf<String?>(null)
+
+    // com.example.studycollab.ui.chat.StudyGroupViewModel.kt
+
     fun consultWithLecturer(groupId: String) {
         viewModelScope.launch {
             isLoading = true
-            errorMessage = null
             try {
-                // קריאה לשרת ליצירת קבוצת התייעצות
                 val response = ApiClient.apiService.openConsultation(groupId)
+                Log.d("ConsultDebug", "Full Response: ${response.body()}") // DEBUG: Check all keys
 
                 if (response.isSuccessful && response.body() != null) {
-                    // קבלת ה-ID של הקבוצה החדשה ועדכון המשתנה שיגרום לניווט
-                    val newGroupId = response.body()!!["consultationGroupId"]
-                    consultationNavigationId = newGroupId
-                } else {
-                    errorMessage = "Failed to start consultation. Lecturer not found or server error."
+                    val data = response.body()!!
+                    val roomId = data["chatRoomId"] ?: data["consultationGroupId"] ?: ""
+
+                    // DEBUG: Try to find why this is null
+                    val name = data["lecturerName"] ?: data["subtitle"]
+                    Log.d("ConsultDebug", "Extracted Name: $name")
+
+                    val finalName = name ?: "Lecturer"
+                    val encodedName = java.net.URLEncoder.encode(finalName, "UTF-8")
+
+                    consultationTargetRoute = "chat/lecturer_consultation/$roomId/$encodedName"
                 }
             } catch (e: Exception) {
+                Log.e("ConsultDebug", "Error: ${e.message}")
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    fun openStandardChat(groupId: String) {
+        viewModelScope.launch {
+            Log.d(TAG, "openStandardChat called for groupId: $groupId")
+            isLoading = true
+            errorMessage = null
+            try {
+                val response = ApiClient.apiService.getStandardRoom(groupId)
+                Log.d(TAG, "Standard Room Response Code: ${response.code()}")
+
+                if (response.isSuccessful && response.body() != null) {
+                    val roomId = response.body()!!["chatRoomId"]
+                    Log.d(TAG, "Standard Room ID received: $roomId")
+
+                    // FIX: Using the correct Screen route generator
+                    val route = Screen.ChatRoom.createRoute(roomId ?: "")
+                    Log.d(TAG, "Navigating to standard chat: $route")
+
+                    consultationTargetRoute = route
+                } else {
+                    Log.e(TAG, "Failed to load standard room: ${response.code()}")
+                    errorMessage = "Failed to load chat room."
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Network error in openStandardChat", e)
                 errorMessage = "Network error: ${e.localizedMessage}"
             } finally {
                 isLoading = false

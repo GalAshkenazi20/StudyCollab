@@ -114,9 +114,6 @@ interface ApiService {
         @Path("courseId") courseId: String
     ): Response<List<StudyGroup>>
 
-    // --- הוספנו את הפונקציה הזו לפתיחת התייעצות ---
-    @POST("api/groups/{groupId}/consult")
-    suspend fun openConsultation(@Path("groupId") groupId: String): Response<Map<String, String>>
     // ---------------------------------------------
 
     @POST("api/groups/consultation")
@@ -144,12 +141,21 @@ interface ApiService {
     suspend fun deleteNotification(@Path("id") id: String): Response<Unit>
 
     // --- Chat Endpoints ---
-    @GET("api/messages/{groupId}")
-    suspend fun getGroupMessages(@Path("groupId") groupId: String): Response<List<Message>>
 
+    @GET("api/messages/{chatRoomId}")
+    suspend fun getChatMessages(@Path("chatRoomId") chatRoomId: String): Response<List<Message>>
+
+    @GET("api/groups/{groupId}/standard-room")
+    suspend fun getStandardRoom(@Path("groupId") groupId: String): Response<Map<String, String>>
+
+    // Body will now contain chatRoomId instead of groupId
     @POST("api/messages")
     suspend fun sendMessage(@Body request: SendMessageRequest): Response<Message>
 
+    // --- REFACTORED Consultation ---
+    // Now returns Map with chatRoomId, title, and subtitle
+    @POST("api/groups/{groupId}/consult")
+    suspend fun openConsultation(@Path("groupId") groupId: String): Response<Map<String, String>>
     // --- Assignments ---
     @GET("api/assignments/course/{courseId}")
     suspend fun getCourseAssignments(@Path("courseId") courseId: String): Response<List<Assignment>>
@@ -229,4 +235,9 @@ interface ApiService {
     // --- הוסף את זה אם חסר לך כדי למשוך קורסים של סטודנט ספציפי ---
     @GET("api/courses/student/{studentId}")
     suspend fun getStudentCourses(@Path("studentId") studentId: String): Response<List<Course>>
+
+    @GET("api/courses/lecturer/{lecturerId}/consultations")
+    suspend fun getLecturerConsultations(
+        @Path("lecturerId") lecturerId: String
+    ): Response<List<ConsultationRoom>>
 }

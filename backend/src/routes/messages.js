@@ -1,74 +1,78 @@
 const express = require('express');
 const router = express.Router();
 const Message = require('../models/Message');
+const ChatRoom = require('../models/ChatRoom');
 const StudyGroup = require('../models/StudyGroup'); 
 const Notification = require('../models/Notification'); 
 
-// 1. Get messages for a group
-router.get('/:groupId', async (req, res) => {
+// Helper to resolve an ID to a ChatRoomId
+const resolveRoom = async (targetId) => {
+    // 1. Try finding as a ChatRoom ID
+    let room = await ChatRoom.findById(targetId);
+    if (room) return room;
+
+    // 2. If not found, assume it's a StudyGroup ID and find/create the 'standard' room
+    room = await ChatRoom.findOne({ parentGroupId: targetId, type: 'standard' });
+    if (!room) {
+        room = new ChatRoom({ type: 'standard', parentGroupId: targetId });
+        await room.save();
+    }
+    return room;
+};
+
+// 1. Get messages for a specific room (or resolve from Group ID)
+router.get('/:id', async (req, res) => {
   try {
-    const { groupId } = req.params;
-    const messages = await Message.find({ groupId }).sort({ timestamp: 1 });
+    const room = await resolveRoom(req.params.id);
+    const messages = await Message.find({ chatRoomId: room._id }).sort({ timestamp: 1 });
     res.json(messages);
   } catch (error) {
-    console.error('Error fetching messages:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 });
 
-// 2. Send a new message + Create Notifications
+// 2. Send a new message
 router.post('/', async (req, res) => {
   try {
-    const { groupId, senderId, senderName, content } = req.body;
+    const { chatRoomId: targetId, senderId, senderName, content } = req.body;
+    const room = await resolveRoom(targetId);
 
-    // 1. יצירת ושמירת ההודעה
     const newMessage = new Message({
-      groupId,
+      chatRoomId: room._id,
       senderId,
       senderName,
       content
     });
     const savedMessage = await newMessage.save();
 
-    // =======================================================
-    // 2. לוגיקת ההתראות המתוקנת עם מפתח ייחודי לכל הודעה
-    // =======================================================
-    try {
-        const group = await StudyGroup.findById(groupId);
-        
+    // Notification Logic
+    if (room.parentGroupId) {
+        const group = await StudyGroup.findById(room.parentGroupId);
         if (group) {
-            // סינון: שולחים לכל חברי הקבוצה חוץ מהשולח
-            const recipients = group.members.filter(m => 
-                m.userId.toString() !== senderId.toString()
-            );
-
-            // יצירת רשימת התראות עם dedupeKey ייחודי לכל הודעה
-            const notifications = recipients.map(member => ({
-                userId: member.userId,
-                title: `New Message in ${group.name}`,
-                message: `${senderName}: ${content.substring(0, 30)}${content.length > 30 ? '...' : ''}`,
-                type: 'new_message',
-                relatedId: groupId,
-                // פתרון הבעיה: שילוב מזהה ההודעה והמשתמש כדי לעקוף את ה-Unique Index
-                dedupeKey: `msg_${savedMessage._id}_${member.userId}`, 
-                createdAt: new Date()
-            }));
-
-            if (notifications.length > 0) {
-                // insertMany יצליח כעת כי לכל התראה יש dedupeKey שונה
-                await Notification.insertMany(notifications);
-                console.log(`Successfully created ${notifications.length} unique notifications`);
+            let recipientIds = group.members.map(m => m.userId.toString());
+            
+            // If consultation, include the lecturer in the loop
+            if (room.type === 'lecturer_consultation' && room.metadata.lecturerId) {
+                recipientIds.push(room.metadata.lecturerId.toString());
             }
+
+            const notifications = recipientIds
+                .filter(id => id !== senderId.toString())
+                .map(userId => ({
+                    userId,
+                    title: room.type === 'standard' ? `Group: ${group.name}` : `Consultation: ${group.name}`,
+                    message: `${senderName}: ${content.substring(0, 30)}...`,
+                    type: 'new_message',
+                    relatedId: room._id,
+                    dedupeKey: `msg_${savedMessage._id}_${userId}`
+                }));
+
+            if (notifications.length > 0) await Notification.insertMany(notifications, { ordered: false });
         }
-    } catch (notifError) {
-        // אם יש שגיאת Duplicate Key (קוד 11000), זה אומר שההתראה כבר קיימת
-        console.error("Notification logic error:", notifError.message);
     }
-    // =======================================================
 
     res.status(201).json(savedMessage);
   } catch (error) {
-    console.error('Error sending message:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 });

@@ -17,6 +17,7 @@ runtimeVersion = "1.10.2"
 uiText = "1.10.2"
 uiTestJunit4 = "1.10.2"
 material3 = "1.4.0"
+androidxRuntime = "1.10.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -42,6 +43,7 @@ androidx-runtime = { group = "androidx.compose.runtime", name = "runtime", versi
 androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiText" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4", version.ref = "uiTestJunit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "androidxRuntime" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

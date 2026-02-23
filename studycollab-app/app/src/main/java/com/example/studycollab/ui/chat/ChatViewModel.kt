@@ -25,12 +25,12 @@ class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
     private var currentRoomId: String? = null
 
     /**
-     * @param groupId The raw Hex ID of the group
-     * @param isConsultation if true, creates a NEW room context separate from the group
+     * @param chatRoomId The unique ObjectId of the room (Group, Consultation, or Forum)
+     * @param isConsultation if true, indicates we are in consultation mode
      */
-    fun startChat(groupId: String, isConsultation: Boolean = false, poll: Boolean = true) {
-        // By prefixing, we ensure a NEW chat history that does not include old messages
-        this.currentRoomId = if (isConsultation) "consultation_$groupId" else groupId
+    fun startChat(chatRoomId: String, isConsultation: Boolean = false, poll: Boolean = true) {
+
+        this.currentRoomId = chatRoomId
 
         if (poll) {
             startPollingMessages()
@@ -56,7 +56,7 @@ class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
 
                 // Sends to the new prefixed room ID
                 val result = repository.sendMessage(
-                    groupId = roomId,
+                    chatRoomId = roomId,
                     senderId = safeUserId,
                     senderName = safeUserName,
                     content = content

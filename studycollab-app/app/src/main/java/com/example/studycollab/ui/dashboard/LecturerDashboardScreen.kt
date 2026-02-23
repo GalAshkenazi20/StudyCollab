@@ -18,13 +18,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.studycollab.ui.Screen
+import com.example.studycollab.ui.chat.LecturerChatViewModel
 import com.example.studycollab.utils.UserSession
 
 @Composable
-fun LecturerDashboardScreen(navController: NavController) {
+fun LecturerDashboardScreen(navController: NavController,
+                            chatViewModel: LecturerChatViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
     val lecturerName = UserSession.userName ?: "Lecturer"
     var visible by remember { mutableStateOf(false) }
+    val lecturerId = UserSession.userId ?: ""
 
+    LaunchedEffect(lecturerId) {
+        if (lecturerId.isNotEmpty()) {
+            chatViewModel.fetchConsultations(lecturerId)
+        }
+    }
     LaunchedEffect(Unit) { visible = true }
 
     Box(
@@ -83,7 +91,7 @@ fun LecturerDashboardScreen(navController: NavController) {
                     }
                     item {
                         ModernDashboardCard("Messages", Icons.Default.Chat, MaterialTheme.colorScheme.primary) {
-                            navController.navigate(Screen.Chats.route)
+                            navController.navigate("lecturer_consultations_list")
                         }
                     }
                 }
