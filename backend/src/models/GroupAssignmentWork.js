@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const SubTaskSchema = new mongoose.Schema({
     title: { type: String, required: true },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    completedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Ensure this exists!
+    completedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     status: { type: String, enum: ['todo', 'pending_approval', 'completed'], default: 'todo' },
     completedAt: { type: Date }
 });
