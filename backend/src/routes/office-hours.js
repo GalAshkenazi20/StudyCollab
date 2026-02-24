@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const OfficeHourSlot = require("../models/OfficeHourSlot");
+const { sendPushToUser } = require("../services/pushNotification");
 
 // 1. GET all slots for a specific lecturer (Used by both roles)
 router.get("/lecturer/:lecturerId", async (req, res) => {
@@ -63,6 +64,11 @@ router.patch("/book/:slotId", async (req, res) => {
     })
       .save()
       .catch((e) => console.error(e));
+    // Send push notification to lecturer
+    await sendPushToUser(slot.lecturerId, "Office Hour Booked", `A student booked your ${slot.dayOfWeek} ${slot.startTime} slot`, {
+      type: 'office_hour_booked',
+      relatedId: slot._id
+    });
   } catch (error) {
     res.status(500).json({ message: "Booking failed", error: error.message });
   }

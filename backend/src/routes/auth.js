@@ -40,6 +40,23 @@ router.put('/preferences/:userId', async (req, res) => {
     }
 });
 
+// Register/update FCM token for push notifications
+router.post('/fcm-token', async (req, res) => {
+  try {
+    const { userId, fcmToken } = req.body;
+
+    if (!userId || !fcmToken) {
+      return res.status(400).json({ message: 'userId and fcmToken are required' });
+    }
+
+    await User.findByIdAndUpdate(userId, { fcmToken: fcmToken });
+    res.json({ message: 'FCM token registered successfully' });
+  } catch (error) {
+    console.error('FCM token registration error:', error);
+    res.status(500).json({ message: 'Failed to register FCM token' });
+  }
+});
+
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     

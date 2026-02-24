@@ -41,7 +41,8 @@ const UserSchema = new mongoose.Schema({
     deadlineReminderHours: { type: Number, default: 24 }
 },
 
-  settings: { type: Object }
+  settings: { type: Object }, fcmToken: { type: String, default: null }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", UserSchema);

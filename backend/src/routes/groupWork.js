@@ -3,6 +3,7 @@ const router = express.Router();
 const GroupAssignmentWork = require("../models/GroupAssignmentWork");
 const StudyGroup = require("../models/StudyGroup");
 const mongoose = require("mongoose");
+const { sendPushToUser } = require("../services/pushNotification");
 
 // 1. Get or Initialize work for a group on a specific assignment
 router.get("/:groupId/:assignmentId", async (req, res) => {
@@ -90,6 +91,11 @@ router.post("/:workId/subtasks", async (req, res) => {
       await notification
         .save()
         .catch((e) => console.error("Notification error:", e));
+      // Send push notification to assigned member
+      await sendPushToUser(assignedTo, "New Task Assigned", `You've been assigned: "${title}"`, {
+        type: 'task_assigned',
+        relatedId: work.groupId
+      });
     }
   } catch (error) {
     console.error("POST Subtask Error:", error);
@@ -130,6 +136,11 @@ router.patch("/:workId/subtasks/:subTaskId/complete", async (req, res) => {
       })
         .save()
         .catch((e) => console.error(e));
+      // Send push notification to admin
+      await sendPushToUser(admin.userId, "Task Awaiting Approval", `A task "${task.title}" is pending your approval`, {
+        type: 'task_pending_approval',
+        relatedId: work.groupId
+      });
     }
   } catch (error) {
     res.status(500).json({ message: "Failed to update task" });
@@ -173,6 +184,11 @@ router.patch("/:workId/subtasks/:subTaskId/approve", async (req, res) => {
       })
         .save()
         .catch((e) => console.error(e));
+      // Send push notification to the member
+      await sendPushToUser(task.completedBy, "Task Approved!", `Your task "${task.title}" has been approved`, {
+        type: 'task_approved',
+        relatedId: work.groupId
+      });
     }
   } catch (error) {
     res.status(500).json({ message: "Approval failed" });
