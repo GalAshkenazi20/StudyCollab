@@ -37,15 +37,22 @@ fun SplashScreen(navController: NavController, viewModel: AuthViewModel) {
     var isLocationVerified by remember { mutableStateOf(false) }
     var isCheckingLocation by remember { mutableStateOf(true) }
     var showErrorDialog by remember { mutableStateOf<String?>(null) }
+    var hasNavigated by remember { mutableStateOf(false) }
 
     val currentUser = viewModel.currentUser
 
-    // Initialize MSAL and watch for login success
-    LaunchedEffect(currentUser) {
+    // FIX: Separate initMsal (runs once) from navigation check (runs on currentUser change)
+    LaunchedEffect(Unit) {
         viewModel.initMsal(context)
-        if (currentUser != null) {
+    }
+
+    // FIX: Watch for login — navigate only once using hasNavigated guard
+    LaunchedEffect(currentUser) {
+        if (currentUser != null && !hasNavigated) {
+            hasNavigated = true
             navController.navigate("dashboard") {
                 popUpTo(Screen.Splash.route) { inclusive = true }
+                launchSingleTop = true
             }
         }
     }
