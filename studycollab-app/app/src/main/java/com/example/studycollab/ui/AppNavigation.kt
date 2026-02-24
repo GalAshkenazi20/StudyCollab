@@ -1,6 +1,10 @@
 package com.example.studycollab.ui
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+//import androidx.compose.animation.slideIntoContainer
+//import androidx.compose.animation.slideOutOfContainer
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -26,16 +30,20 @@ import com.example.studycollab.ui.submissions.*
 import com.example.studycollab.ui.tasks.*
 import com.example.studycollab.ui.timetable.TimeTableScreen
 import com.example.studycollab.utils.UserSession
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    // ✅ FIX #1: לא להשתמש ב-rememberDrawerState כדי שלא "ישחזר" פתיחה אוטומטית.
+    // תמיד להתחיל סגור לסשן הנוכחי.
+    val drawerState = remember { DrawerState(DrawerValue.Closed) }
     val scope = rememberCoroutineScope()
 
-    // Shared ViewModels - Preserved
+    // Shared ViewModels
     val authViewModel: AuthViewModel = viewModel()
     val studyViewModel: StudyGroupViewModel = viewModel()
     val assignmentViewModel: AssignmentViewModel = viewModel()
@@ -44,10 +52,12 @@ fun AppNavigation() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Preserved Original Logic for Header Visibility
-    val showHeader = currentRoute != null && currentRoute != Screen.Login.route && currentRoute != Screen.Splash.route
+    // Header visibility
+    val showHeader = currentRoute != null &&
+            currentRoute != Screen.Login.route &&
+            currentRoute != Screen.Splash.route
 
-    // Preserved Original Top-Level Routes (Restored notification_settings)
+    // Top-level routes (for burger icon)
     val topLevelRoutes = listOf(
         "dashboard",
         Screen.StudyGroups.route,
@@ -57,7 +67,7 @@ fun AppNavigation() {
     )
     val isTopLevel = currentRoute in topLevelRoutes
 
-    // Preserved Dynamic Title Logic
+    // Screen title
     val screenTitle = when {
         currentRoute == "dashboard" -> "Dashboard"
         currentRoute == Screen.StudyGroups.route -> "My Study Groups"
@@ -68,41 +78,86 @@ fun AppNavigation() {
         else -> "StudyCollab"
     }
 
+    // ✅ FIX #2: Delay enabling drawer gestures + Force close drawer on dashboard entry
+    var drawerGesturesReady by remember { mutableStateOf(false) }
+    LaunchedEffect(currentRoute) {
+        if (currentRoute == "dashboard") {
+            drawerState.close()
+            delay(300)
+            drawerGesturesReady = true
+        } else {
+            drawerGesturesReady = false
+        }
+    }
+
+    // ✅ FIX #3: כשנכנסים לדשבורד (אחרי התחברות) – לטעון notifications מיד
+    LaunchedEffect(currentRoute, UserSession.userId) {
+        if (currentRoute == "dashboard" && UserSession.userId != null) {
+            notifViewModel.loadNotifications()
+        }
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = showHeader && isTopLevel,
+        gesturesEnabled = showHeader && isTopLevel && drawerGesturesReady,
         drawerContent = {
             if (showHeader) {
                 ModalDrawerSheet {
-                    Text("StudyCollab", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.headlineSmall)
+                    Text(
+                        text = "StudyCollab",
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.headlineSmall
+                    )
                     HorizontalDivider()
+
                     NavigationDrawerItem(
                         label = { Text("Dashboard") },
                         selected = currentRoute == "dashboard",
-                        onClick = { scope.launch { drawerState.close() }; navController.navigate("dashboard") },
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            navController.navigate("dashboard") {
+                                launchSingleTop = true
+                            }
+                        },
                         icon = { Icon(Icons.Default.Home, null) }
                     )
+
                     NavigationDrawerItem(
                         label = { Text("Study Groups") },
                         selected = currentRoute == Screen.StudyGroups.route,
-                        onClick = { scope.launch { drawerState.close() }; navController.navigate(Screen.StudyGroups.route) },
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            navController.navigate(Screen.StudyGroups.route) {
+                                launchSingleTop = true
+                            }
+                        },
                         icon = { Icon(Icons.Default.Groups, null) }
                     )
-                    // RESTORED: Notification Settings Drawer Item
+
                     NavigationDrawerItem(
                         label = { Text("Notification Settings") },
                         selected = currentRoute == "notification_settings",
-                        onClick = { scope.launch { drawerState.close() }; navController.navigate("notification_settings") },
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            navController.navigate("notification_settings") {
+                                launchSingleTop = true
+                            }
+                        },
                         icon = { Icon(Icons.Default.Settings, null) }
                     )
+
                     Spacer(Modifier.weight(1f))
+
                     NavigationDrawerItem(
                         label = { Text("Logout") },
                         selected = false,
                         onClick = {
                             scope.launch { drawerState.close() }
                             UserSession.logout()
-                            navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } }
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(0) { inclusive = true }
+                                launchSingleTop = true
+                            }
                         },
                         icon = { Icon(Icons.Default.ExitToApp, null) }
                     )
@@ -114,17 +169,29 @@ fun AppNavigation() {
             topBar = {
                 if (showHeader) {
                     CenterAlignedTopAppBar(
-                        title = { Text(screenTitle) }, // RESTORED: Dynamic Title
+                        title = { Text(screenTitle) },
                         navigationIcon = {
                             if (isTopLevel) {
-                                IconButton(onClick = { scope.launch { drawerState.open() } }) { Icon(Icons.Default.Menu, null) }
+                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                    Icon(Icons.Default.Menu, null)
+                                }
                             } else {
-                                IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
+                                IconButton(onClick = { navController.popBackStack() }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+                                }
                             }
                         },
                         actions = {
-                            BadgedBox(badge = { if (notifViewModel.notifications.isNotEmpty()) Badge { Text("${notifViewModel.notifications.size}") } }) {
-                                IconButton(onClick = { navController.navigate(Screen.Notifications.route) }) { Icon(Icons.Default.Notifications, null) }
+                            BadgedBox(
+                                badge = {
+                                    if (notifViewModel.notifications.isNotEmpty()) {
+                                        Badge { Text("${notifViewModel.notifications.size}") }
+                                    }
+                                }
+                            ) {
+                                IconButton(onClick = { navController.navigate(Screen.Notifications.route) }) {
+                                    Icon(Icons.Default.Notifications, null)
+                                }
                             }
                         }
                     )
@@ -135,29 +202,43 @@ fun AppNavigation() {
                 navController = navController,
                 startDestination = Screen.Splash.route,
                 modifier = Modifier.padding(if (showHeader) innerPadding else PaddingValues(0.dp)),
-                enterTransition = { fadeIn(tween(400)) + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(400)) },
-                exitTransition = { fadeOut(tween(400)) + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(400)) }
+                enterTransition = {
+                    fadeIn(tween(400)) + slideIntoContainer(
+                        AnimatedContentTransitionScope.SlideDirection.Start,
+                        tween(400)
+                    )
+                },
+                exitTransition = {
+                    fadeOut(tween(400)) + slideOutOfContainer(
+                        AnimatedContentTransitionScope.SlideDirection.End,
+                        tween(400)
+                    )
+                }
             ) {
 
+                // --- SPLASH ---
                 composable(Screen.Splash.route) {
                     SplashScreen(navController = navController, viewModel = authViewModel)
                 }
-                // --- AUTHENTICATION ---
+
+                // --- LOGIN ---
                 composable(Screen.Login.route) {
-                    // FIXED: Added 'navController' as the second parameter
                     LoginScreen(viewModel(), navController) {
                         navController.navigate("dashboard") {
                             popUpTo(Screen.Login.route) { inclusive = true }
+                            launchSingleTop = true
                         }
                     }
                 }
 
-                // --- DYNAMIC DASHBOARD ---
+                // --- DASHBOARD ---
                 composable("dashboard") {
                     when (UserSession.userRole) {
                         "lecturer" -> LecturerDashboardScreen(navController)
                         "student" -> StudentDashboardScreen(navController)
-                        else -> Box(Modifier.fillMaxSize(), Alignment.Center) { Text("Error: Unauthorized") }
+                        else -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                            Text("Error: Unauthorized")
+                        }
                     }
                 }
 
@@ -165,35 +246,116 @@ fun AppNavigation() {
                     LecturerGroupOversightScreen(navController)
                 }
 
-                // --- LECTURER ROUTES (Restored All) ---
-                composable("syllabus_management/{courseId}/{courseName}", listOf(navArgument("courseId"){type=NavType.StringType}, navArgument("courseName"){type=NavType.StringType})) { b ->
-                    SyllabusManagementScreen(navController, b.arguments?.getString("courseId") ?: "", b.arguments?.getString("courseName") ?: "")
+                // --- LECTURER ROUTES ---
+                composable(
+                    "syllabus_management/{courseId}/{courseName}",
+                    listOf(
+                        navArgument("courseId") { type = NavType.StringType },
+                        navArgument("courseName") { type = NavType.StringType }
+                    )
+                ) { b ->
+                    SyllabusManagementScreen(
+                        navController,
+                        b.arguments?.getString("courseId") ?: "",
+                        b.arguments?.getString("courseName") ?: ""
+                    )
                 }
-                composable("materials_management/{courseId}/{courseName}", listOf(navArgument("courseId"){type=NavType.StringType}, navArgument("courseName"){type=NavType.StringType})) { b ->
-                    MaterialsManagementScreen(navController, b.arguments?.getString("courseId") ?: "", b.arguments?.getString("courseName") ?: "")
+
+                composable(
+                    "materials_management/{courseId}/{courseName}",
+                    listOf(
+                        navArgument("courseId") { type = NavType.StringType },
+                        navArgument("courseName") { type = NavType.StringType }
+                    )
+                ) { b ->
+                    MaterialsManagementScreen(
+                        navController,
+                        b.arguments?.getString("courseId") ?: "",
+                        b.arguments?.getString("courseName") ?: ""
+                    )
                 }
+
                 composable("lecturer_courses") { LecturerCoursesScreen(navController) }
-                composable("submission_tracking/{assignmentId}/{assignmentTitle}", listOf(navArgument("assignmentId"){type=NavType.StringType}, navArgument("assignmentTitle"){type=NavType.StringType})) { b ->
-                    SubmissionTrackingScreen(navController, b.arguments?.getString("assignmentId") ?: "", b.arguments?.getString("assignmentTitle") ?: "", viewModel())
+
+                composable(
+                    "submission_tracking/{assignmentId}/{assignmentTitle}",
+                    listOf(
+                        navArgument("assignmentId") { type = NavType.StringType },
+                        navArgument("assignmentTitle") { type = NavType.StringType }
+                    )
+                ) { b ->
+                    SubmissionTrackingScreen(
+                        navController,
+                        b.arguments?.getString("assignmentId") ?: "",
+                        b.arguments?.getString("assignmentTitle") ?: "",
+                        viewModel()
+                    )
                 }
+
                 composable("office_hours_scheduler") { OfficeHoursSchedulerScreen(navController) }
 
-                // --- STUDENT ROUTES (Restored All) ---
-                composable("student_assignments/{courseId}/{courseName}", listOf(navArgument("courseId"){type=NavType.StringType}, navArgument("courseName"){type=NavType.StringType})) { b ->
-                    StudentAssignmentsScreen(navController, b.arguments?.getString("courseId") ?: "", b.arguments?.getString("courseName") ?: "")
+                // --- STUDENT ROUTES ---
+                composable(
+                    "student_assignments/{courseId}/{courseName}",
+                    listOf(
+                        navArgument("courseId") { type = NavType.StringType },
+                        navArgument("courseName") { type = NavType.StringType }
+                    )
+                ) { b ->
+                    StudentAssignmentsScreen(
+                        navController,
+                        b.arguments?.getString("courseId") ?: "",
+                        b.arguments?.getString("courseName") ?: ""
+                    )
                 }
-                composable("student_materials/{courseId}/{courseName}", listOf(navArgument("courseId"){type=NavType.StringType}, navArgument("courseName"){type=NavType.StringType})) { b ->
-                    StudentMaterialsScreen(navController, b.arguments?.getString("courseId") ?: "", b.arguments?.getString("courseName") ?: "")
-                }
-                composable("submit_assignment/{assignmentId}/{courseId}", listOf(navArgument("assignmentId"){type=NavType.StringType}, navArgument("courseId"){type=NavType.StringType})) { b ->
-                    SubmitAssignmentScreen(navController, b.arguments?.getString("assignmentId") ?: "", b.arguments?.getString("courseId") ?: "")
-                }
-                composable("lecturer_office_hours/{lecturerId}/{lecturerName}", listOf(navArgument("lecturerId"){type=NavType.StringType}, navArgument("lecturerName"){type=NavType.StringType})) { b ->
-                    LecturerOfficeHoursSlotsScreen(navController, b.arguments?.getString("lecturerId") ?: "", b.arguments?.getString("lecturerName") ?: "")
-                }
-                composable(Screen.BookOfficeHours.route) { StudentOfficeHoursScreen(navController) }
 
-                // --- CONSULTATION ROUTES (Integrated with Named Arguments) ---
+                composable(
+                    "student_materials/{courseId}/{courseName}",
+                    listOf(
+                        navArgument("courseId") { type = NavType.StringType },
+                        navArgument("courseName") { type = NavType.StringType }
+                    )
+                ) { b ->
+                    StudentMaterialsScreen(
+                        navController,
+                        b.arguments?.getString("courseId") ?: "",
+                        b.arguments?.getString("courseName") ?: ""
+                    )
+                }
+
+                composable(
+                    "submit_assignment/{assignmentId}/{courseId}",
+                    listOf(
+                        navArgument("assignmentId") { type = NavType.StringType },
+                        navArgument("courseId") { type = NavType.StringType }
+                    )
+                ) { b ->
+                    SubmitAssignmentScreen(
+                        navController,
+                        b.arguments?.getString("assignmentId") ?: "",
+                        b.arguments?.getString("courseId") ?: ""
+                    )
+                }
+
+                composable(
+                    "lecturer_office_hours/{lecturerId}/{lecturerName}",
+                    listOf(
+                        navArgument("lecturerId") { type = NavType.StringType },
+                        navArgument("lecturerName") { type = NavType.StringType }
+                    )
+                ) { b ->
+                    LecturerOfficeHoursSlotsScreen(
+                        navController,
+                        b.arguments?.getString("lecturerId") ?: "",
+                        b.arguments?.getString("lecturerName") ?: ""
+                    )
+                }
+
+                composable(Screen.BookOfficeHours.route) {
+                    StudentOfficeHoursScreen(navController)
+                }
+
+                // --- CONSULTATION ROUTES ---
                 composable(
                     route = "chat/lecturer_consultation/{roomId}/{lecturerName}",
                     arguments = listOf(
@@ -202,60 +364,133 @@ fun AppNavigation() {
                     )
                 ) { b ->
                     val roomId = b.arguments?.getString("roomId") ?: ""
-                    // Fallback here ensures the ChatScreen header always has a string
                     val lecturerName = b.arguments?.getString("lecturerName") ?: "Lecturer"
 
                     ChatScreen(
                         navController = navController,
-                        groupId = roomId, // This is passed to ChatViewModel as currentRoomId
+                        groupId = roomId,
                         consultationName = lecturerName,
                         isConsultation = true
                     )
                 }
-                composable("course_groups_consultation/{courseId}/{originGroupId}", listOf(navArgument("courseId"){type=NavType.StringType}, navArgument("originGroupId"){type=NavType.StringType})) { b ->
-                    PeerGroupConsultationScreen(navController, b.arguments?.getString("courseId") ?: "", b.arguments?.getString("originGroupId") ?: "", studyViewModel)
-                }
 
-                // --- SHARED COMPONENTS & STUDY GROUPS (Restored All) ---
-                composable(Screen.Notifications.route) { NotificationScreen(notifViewModel) { navController.popBackStack() } }
-                composable("notification_settings") { NotificationSettingsScreen() } // RESTORED
-                composable(Screen.StudyGroups.route) { StudyGroupScreen(navController, studyViewModel) }
-                composable(Screen.CreateStudyGroup.route) { CreateGroupScreen(studyViewModel) { navController.popBackStack() } }
-                composable(Screen.GroupDetails.route, listOf(navArgument("groupId"){type=NavType.StringType})) { b ->
-                    GroupDetailsScreen(b.arguments?.getString("groupId") ?: "", studyViewModel, navController)
-                }
-                composable(Screen.Participants.route, listOf(navArgument("groupId"){type=NavType.StringType})) { b ->
-                    ParticipantsScreen(b.arguments?.getString("groupId") ?: "", studyViewModel, navController)
-                }
-                composable(Screen.GroupTasks.route, listOf(navArgument("groupId"){type=NavType.StringType})) { b ->
-                    val gid = b.arguments?.getString("groupId") ?: ""
-                    val group = studyViewModel.myGroups.find { it._id.toString().filter { it.isLetterOrDigit() } == gid.filter { it.isLetterOrDigit() } }
-                    val cId = group?.courseId?.toString()?.replace("\"", "")?.replace("{", "")?.replace("}", "")?.filter { it.isLetterOrDigit() } ?: ""
-                    TaskListScreen(navController, cId, gid, assignmentViewModel, studyViewModel)
-                }
-                composable("group_task_details/{groupId}/{subTaskId}", listOf(navArgument("groupId"){type=NavType.StringType}, navArgument("subTaskId"){type=NavType.StringType})) { b ->
-                    SubTaskDetailScreen(navController, b.arguments?.getString("groupId") ?: "", b.arguments?.getString("subTaskId") ?: "", assignmentViewModel, studyViewModel)
-                }
-                composable(Screen.Courses.route) { CourseListScreen(navController, studyViewModel) }
-                composable(Screen.CourseDetail.route, listOf(navArgument("name"){type=NavType.StringType}, navArgument("code"){type=NavType.StringType})) { b ->
-                    CourseDetailScreen(navController, b.arguments?.getString("name") ?: "", b.arguments?.getString("code") ?: "", studyViewModel)
-                }
-                composable(Screen.ChatRoom.route, listOf(navArgument("groupId"){type=NavType.StringType})) { b ->
-                    ChatScreen(navController, b.arguments?.getString("groupId") ?: "")
-                }
-                composable(Screen.Chats.route) { ChatListScreen(navController) }
-                composable(Screen.Timetable.route) { TimeTableScreen(navController) }
-                composable("lecturer_consultations_list") {
-                    // We can share the ViewModel instance here
-                    val chatVM: LecturerChatViewModel = viewModel()
-
-                    LecturerConsultationsListScreen(
-                        navController = navController,
-                        viewModel = chatVM
+                composable(
+                    "course_groups_consultation/{courseId}/{originGroupId}",
+                    listOf(
+                        navArgument("courseId") { type = NavType.StringType },
+                        navArgument("originGroupId") { type = NavType.StringType }
+                    )
+                ) { b ->
+                    PeerGroupConsultationScreen(
+                        navController,
+                        b.arguments?.getString("courseId") ?: "",
+                        b.arguments?.getString("originGroupId") ?: "",
+                        studyViewModel
                     )
                 }
 
-                // com.example.studycollab.ui.AppNavigation.kt
+                // --- SHARED / GROUPS / TASKS ---
+                composable(Screen.Notifications.route) {
+                    NotificationScreen(notifViewModel) { navController.popBackStack() }
+                }
+
+                composable("notification_settings") { NotificationSettingsScreen() }
+
+                composable(Screen.StudyGroups.route) { StudyGroupScreen(navController, studyViewModel) }
+
+                composable(Screen.CreateStudyGroup.route) {
+                    CreateGroupScreen(studyViewModel) { navController.popBackStack() }
+                }
+
+                composable(
+                    Screen.GroupDetails.route,
+                    listOf(navArgument("groupId") { type = NavType.StringType })
+                ) { b ->
+                    GroupDetailsScreen(
+                        b.arguments?.getString("groupId") ?: "",
+                        studyViewModel,
+                        navController
+                    )
+                }
+
+                composable(
+                    Screen.Participants.route,
+                    listOf(navArgument("groupId") { type = NavType.StringType })
+                ) { b ->
+                    ParticipantsScreen(
+                        b.arguments?.getString("groupId") ?: "",
+                        studyViewModel,
+                        navController
+                    )
+                }
+
+                composable(
+                    Screen.GroupTasks.route,
+                    listOf(navArgument("groupId") { type = NavType.StringType })
+                ) { b ->
+                    val gid = b.arguments?.getString("groupId") ?: ""
+                    val group = studyViewModel.myGroups.find {
+                        it._id.toString().filter { ch -> ch.isLetterOrDigit() } ==
+                                gid.filter { ch -> ch.isLetterOrDigit() }
+                    }
+                    val cId =
+                        group?.courseId?.toString()
+                            ?.replace("\"", "")
+                            ?.replace("{", "")
+                            ?.replace("}", "")
+                            ?.filter { it.isLetterOrDigit() } ?: ""
+
+                    TaskListScreen(navController, cId, gid, assignmentViewModel, studyViewModel)
+                }
+
+                composable(
+                    "group_task_details/{groupId}/{subTaskId}",
+                    listOf(
+                        navArgument("groupId") { type = NavType.StringType },
+                        navArgument("subTaskId") { type = NavType.StringType }
+                    )
+                ) { b ->
+                    SubTaskDetailScreen(
+                        navController,
+                        b.arguments?.getString("groupId") ?: "",
+                        b.arguments?.getString("subTaskId") ?: "",
+                        assignmentViewModel,
+                        studyViewModel
+                    )
+                }
+
+                composable(Screen.Courses.route) { CourseListScreen(navController, studyViewModel) }
+
+                composable(
+                    Screen.CourseDetail.route,
+                    listOf(
+                        navArgument("name") { type = NavType.StringType },
+                        navArgument("code") { type = NavType.StringType }
+                    )
+                ) { b ->
+                    CourseDetailScreen(
+                        navController,
+                        b.arguments?.getString("name") ?: "",
+                        b.arguments?.getString("code") ?: "",
+                        studyViewModel
+                    )
+                }
+
+                composable(
+                    Screen.ChatRoom.route,
+                    listOf(navArgument("groupId") { type = NavType.StringType })
+                ) { b ->
+                    ChatScreen(navController, b.arguments?.getString("groupId") ?: "")
+                }
+
+                composable(Screen.Chats.route) { ChatListScreen(navController) }
+
+                composable(Screen.Timetable.route) { TimeTableScreen(navController) }
+
+                composable("lecturer_consultations_list") {
+                    val chatVM: LecturerChatViewModel = viewModel()
+                    LecturerConsultationsListScreen(navController = navController, viewModel = chatVM)
+                }
 
                 composable(
                     route = "peer_network/{courseId}/{originGroupId}",
@@ -271,7 +506,7 @@ fun AppNavigation() {
                         navController = navController,
                         courseId = courseId,
                         originGroupId = originGroupId,
-                        viewModel = studyViewModel // Ensure your StudyGroupViewModel is passed here
+                        viewModel = studyViewModel
                     )
                 }
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,8 +28,13 @@ fun StudentAssignmentsScreen(
     courseId: String,
     courseName: String
 ) {
+    val context = LocalContext.current
+
     var assignments by remember { mutableStateOf<List<Assignment>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+
+    // For "Show Assignment"
+    var selectedAssignment by remember { mutableStateOf<Assignment?>(null) }
 
     LaunchedEffect(courseId) {
         try {
@@ -41,6 +47,43 @@ fun StudentAssignmentsScreen(
         } finally {
             isLoading = false
         }
+    }
+
+    // ✅ Show Assignment dialog
+    if (selectedAssignment != null) {
+        val a = selectedAssignment!!
+        AlertDialog(
+            onDismissRequest = { selectedAssignment = null },
+            title = { Text(a.title) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Due: ${a.dueAt}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                    if (!a.description.isNullOrBlank()) {
+                        Text(a.description!!)
+                    } else {
+                        Text("No description provided.", color = Color.Gray)
+                    }
+
+                    if (a.fileUrl.isNullOrBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "No file attached to this assignment.",
+                            color = Color.Gray,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedAssignment = null }) {
+                    Text("Close")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -57,38 +100,27 @@ fun StudentAssignmentsScreen(
     ) { padding ->
         if (isLoading) {
             Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            ) { CircularProgressIndicator() }
         } else if (assignments.isEmpty()) {
             Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
-            ) {
-                Text("No assignments yet", color = Color.Gray)
-            }
+            ) { Text("No assignments yet", color = Color.Gray) }
         } else {
             LazyColumn(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(assignments) { assignment ->
                     AssignmentCard(
                         assignment = assignment,
+                        onShowAssignment = { selectedAssignment = assignment },
                         onViewPdf = {
                             val url = Constants.BASE_URL.trimEnd('/') + (assignment.fileUrl ?: "")
-                            navController.context.startActivity(
-                                Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            )
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                         },
                         onSubmit = {
                             navController.navigate("submit_assignment/${assignment.id}/${courseId}")
@@ -103,12 +135,15 @@ fun StudentAssignmentsScreen(
 @Composable
 fun AssignmentCard(
     assignment: Assignment,
+    onShowAssignment: () -> Unit,
     onViewPdf: () -> Unit,
     onSubmit: () -> Unit
 ) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
+
             Text(assignment.title, style = MaterialTheme.typography.titleMedium)
+
             Text(
                 "Due: ${assignment.dueAt}",
                 style = MaterialTheme.typography.bodySmall,
@@ -118,13 +153,23 @@ fun AssignmentCard(
             Spacer(Modifier.height(12.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (assignment.fileUrl != null) {
+
+
+                OutlinedButton(onClick = onShowAssignment) {
+                    Icon(Icons.Default.Description, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Show Assignment")
+                }
+
+
+                if (!assignment.fileUrl.isNullOrBlank()) {
                     OutlinedButton(onClick = onViewPdf) {
                         Icon(Icons.Default.PictureAsPdf, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text("View PDF")
                     }
                 }
+
                 Button(onClick = onSubmit) {
                     Text("Submit Solution")
                 }

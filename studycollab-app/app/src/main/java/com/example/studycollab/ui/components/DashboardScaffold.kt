@@ -20,7 +20,7 @@ fun DashboardScaffold(
     notificationCount: Int,
     content: @Composable (PaddingValues) -> Unit
 ) {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val drawerState = remember { DrawerState(DrawerValue.Closed) }
     val scope = rememberCoroutineScope()
 
     ModalNavigationDrawer(

@@ -7,8 +7,8 @@ object Constants {
 //    const val BASE_URL = "http://10.0.2.2:3000/"
 
     // Gal's IP address
-//    const val BASE_URL = "http://172.25.58.230:3000/"
+    const val BASE_URL = "http://172.25.58.230:3000/"
 
     // Elad's IP address
-     const val BASE_URL = "http://172.25.53.129:3000/"
+//     const val BASE_URL = "http://172.25.53.129:3000/"
 }
