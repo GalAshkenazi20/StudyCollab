@@ -154,14 +154,14 @@ fun AssignmentCard(
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
 
-                // ✅ תמיד מופיע
+
                 OutlinedButton(onClick = onShowAssignment) {
                     Icon(Icons.Default.Description, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Show Assignment")
                 }
 
-                // ✅ מופיע רק אם יש קובץ
+
                 if (!assignment.fileUrl.isNullOrBlank()) {
                     OutlinedButton(onClick = onViewPdf) {
                         Icon(Icons.Default.PictureAsPdf, null, Modifier.size(18.dp))
