@@ -15,6 +15,7 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  senderGroupName: { type: String },
   content: {
     type: String,
     required: true
@@ -22,7 +23,7 @@ const messageSchema = new mongoose.Schema({
   timestamp: {
     type: Date,
     default: Date.now
-  }
+  },
 });
 
 module.exports = mongoose.model('Message', messageSchema);

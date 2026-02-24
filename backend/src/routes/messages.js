@@ -37,12 +37,26 @@ router.post('/', async (req, res) => {
     const { chatRoomId: targetId, senderId, senderName, content } = req.body;
     const room = await resolveRoom(targetId);
 
+    // --- NEW LOGIC FOR PEER GROUP CONTEXT ---
+    let senderGroupName = null;
+    if (room.type === 'peer_group_consultation') {
+        // Find which group the sender belongs to within this specific consultation
+        const senderGroup = await StudyGroup.findOne({ 
+            _id: { $in: room.metadata.groupIds },
+            'members.userId': senderId 
+        });
+        if (senderGroup) senderGroupName = senderGroup.name;
+    }
+    // ----------------------------------------
+
     const newMessage = new Message({
       chatRoomId: room._id,
       senderId,
       senderName,
-      content
+      content,
+      senderGroupName // Save it to the message document
     });
+    
     const savedMessage = await newMessage.save();
 
     // Notification Logic

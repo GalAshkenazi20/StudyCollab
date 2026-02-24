@@ -254,6 +254,41 @@ fun AppNavigation() {
                         viewModel = chatVM
                     )
                 }
+
+                // com.example.studycollab.ui.AppNavigation.kt
+
+                composable(
+                    route = "peer_network/{courseId}/{originGroupId}",
+                    arguments = listOf(
+                        navArgument("courseId") { type = NavType.StringType },
+                        navArgument("originGroupId") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
+                    val originGroupId = backStackEntry.arguments?.getString("originGroupId") ?: ""
+
+                    PeerGroupConsultationScreen(
+                        navController = navController,
+                        courseId = courseId,
+                        originGroupId = originGroupId,
+                        viewModel = studyViewModel // Ensure your StudyGroupViewModel is passed here
+                    )
+                }
+
+                composable(
+                    route = "chat/peer_consultation/{roomId}/{groupName}",
+                    arguments = listOf(
+                        navArgument("roomId") { type = NavType.StringType },
+                        navArgument("groupName") { type = NavType.StringType }
+                    )
+                ) { b ->
+                    ChatScreen(
+                        navController = navController,
+                        groupId = b.arguments?.getString("roomId") ?: "",
+                        consultationName = b.arguments?.getString("groupName"),
+                        isConsultation = true
+                    )
+                }
             }
         }
     }

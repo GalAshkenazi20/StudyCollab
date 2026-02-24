@@ -216,4 +216,41 @@ router.post('/:groupId/consult', async (req, res) => {
   }
 });
 
+router.post('/:groupId/peer-consult/:targetGroupId', async (req, res) => {
+    try {
+        const { groupId, targetGroupId } = req.params;
+
+        // 1. Force IDs to strings before sorting to prevent "Server Error"
+        const id1 = groupId.toString();
+        const id2 = targetGroupId.toString();
+        const pairKey = [id1, id2].sort().join('_');
+
+        console.log(`🔍 Resolving Peer Room for Key: ${pairKey}`);
+
+        let chatRoom = await ChatRoom.findOne({ 
+            type: 'peer_group_consultation', 
+            'metadata.pairKey': pairKey 
+        });
+
+        if (!chatRoom) {
+            console.log("🆕 Creating new Peer Room");
+            chatRoom = new ChatRoom({
+                type: 'peer_group_consultation',
+                metadata: { 
+                    pairKey: pairKey, 
+                    groupIds: [id1, id2] // Storing as strings for easier matching later
+                }
+            });
+            await chatRoom.save();
+        }
+
+        res.json({ chatRoomId: chatRoom._id.toString() });
+    } catch (error) {
+        console.error("❌ Peer Consult Route Error:", error); // Check Node logs for specific error
+        res.status(500).json({ message: "Server error", details: error.message });
+    }
+});
+
+
+
 module.exports = router;

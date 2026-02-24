@@ -228,11 +228,6 @@ interface ApiService {
         @Body data: Map<String, String>
     ): Response<Submission>
 
-    // --- הוסף את זה אם חסר לך כדי למשוך את כל הקורסים עבור CreateGroupScreen ---
-    @GET("api/courses")
-    suspend fun getAllCourses(): Response<List<Course>>
-
-    // --- הוסף את זה אם חסר לך כדי למשוך קורסים של סטודנט ספציפי ---
     @GET("api/courses/student/{studentId}")
     suspend fun getStudentCourses(@Path("studentId") studentId: String): Response<List<Course>>
 
@@ -240,4 +235,12 @@ interface ApiService {
     suspend fun getLecturerConsultations(
         @Path("lecturerId") lecturerId: String
     ): Response<List<ConsultationRoom>>
+
+    @POST("api/groups/{groupId}/peer-consult/{targetGroupId}")
+    suspend fun openPeerConsultation(
+        @Path("groupId") groupId: String,
+        @Path("targetGroupId") targetGroupId: String
+    ): Response<Map<String, String>>
+
+
 }
