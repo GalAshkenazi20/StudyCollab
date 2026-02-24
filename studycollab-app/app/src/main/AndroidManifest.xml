@@ -41,6 +41,7 @@
                     android:host="com.example.studycollab"
                     android:path="/uV9rT6YvUVGfP6ZvlfiSylp4H44=" />
 <!--                    android:path(elad)="/uV9rT6YvUVGfP6ZvlfiSylp4H44=" -->
+                <!--    android:path(gal)="/bp3Ki1CDPzURlbUjyYw2ipqFgTg=" -->
             </intent-filter>
         </activity>
     </application>
