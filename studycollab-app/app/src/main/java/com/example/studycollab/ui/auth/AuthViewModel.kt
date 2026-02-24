@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import com.microsoft.identity.client.*
 import com.microsoft.identity.client.exception.MsalException
 import android.util.Log
+import com.example.studycollab.services.FCMTokenManager
 
 class AuthViewModel : ViewModel() {
     private val repository = AuthRepository()
@@ -39,7 +40,7 @@ class AuthViewModel : ViewModel() {
         Log.d("MSAL_DEBUG", "Initializing MSAL for user: ${System.getProperty("user.name")}")
 
         // Determine which config to use based on the computer's login name
-        val configResourceId = R.raw.auth_config_elad
+        val configResourceId = R.raw.auth_config_adir
 
         PublicClientApplication.createSingleAccountPublicClientApplication(
             context,
@@ -105,6 +106,7 @@ class AuthViewModel : ViewModel() {
                 UserSession.userId = user._id
                 UserSession.userName = user.profile.fullName
                 UserSession.userRole = user.role
+                FCMTokenManager.registerAfterLogin()
             }.onFailure {
                 errorMessage = "Account link failed: ${it.message}"
             }
@@ -134,8 +136,9 @@ class AuthViewModel : ViewModel() {
                 currentUser = user
                 UserSession.userId = user._id
                 UserSession.userName = user.profile.fullName
-                // FIXED: Capture the role ("student" or "lecturer") from the backend
+                // Capture the role ("student" or "lecturer") from the backend
                 UserSession.userRole = user.role
+                FCMTokenManager.registerAfterLogin()
             }.onFailure {
                 errorMessage = "Login failed: ${it.message}"
             }

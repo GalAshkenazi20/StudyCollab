@@ -16,6 +16,10 @@ node_modules/
 *.jks
 *.keystore
 google-services.json
+firebase-service-account.json
+backend/firebase-service-account.json
+
+
 
 # OS / IDE
 .DS_Store

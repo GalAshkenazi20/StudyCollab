@@ -2,6 +2,7 @@ const Assignment = require('../models/Assignment');
 const CourseMembership = require('../models/CourseMembership');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const { sendPushToUser } = require('../services/pushNotification');
 
 async function checkDeadlines() {
     try {
@@ -36,6 +37,11 @@ async function checkDeadlines() {
                         relatedId: assignment._id,
                         dedupeKey: `deadline_${assignment._id}_${m.userId}`
                     }).save().catch(() => {}); // Dedupe key prevents duplicates
+                    // Send push notification for deadline
+                    await sendPushToUser(m.userId, "Deadline Approaching", `"${assignment.title}" is due in ~${hoursLeft} hours`, {
+                        type: 'deadline_reminder',
+                        relatedId: assignment._id
+                    }).catch(() => {});
                 }
             }
         }

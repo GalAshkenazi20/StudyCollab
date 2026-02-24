@@ -4,6 +4,7 @@ const Submission = require('../models/Submission');
 const Assignment = require('../models/Assignment');
 const Notification = require('../models/Notification');
 const User = require('../models/User'); 
+const { sendPushToUser } = require('../services/pushNotification');
 
 const multer = require('multer');
 const path = require('path');
@@ -68,6 +69,11 @@ router.post('/', async (req, res) => {
                     createdAt: new Date()
                 });
                 await notification.save();
+                // Send push notification to lecturer
+                await sendPushToUser(assignment.createdBy, "New Submission", `${student.profile?.fullName || 'A student'} submitted: ${assignment.title}`, {
+                    type: 'submission',
+                    relatedId: savedSubmission._id
+                });
             }
         } catch (notifError) {
             console.error("Error sending notification to lecturer:", notifError);
@@ -115,6 +121,11 @@ router.patch('/:submissionId/grade', async (req, res) => {
                 createdAt: new Date()
             });
             await notification.save();
+            // Send push notification to student about grade
+            await sendPushToUser(updatedSubmission.studentId, "Grade Posted", `You received a grade: ${grade}`, {
+                type: 'grade',
+                relatedId: updatedSubmission.assignmentId
+            });
         } catch (notifError) {
             console.error("Error sending grade notification:", notifError);
         }

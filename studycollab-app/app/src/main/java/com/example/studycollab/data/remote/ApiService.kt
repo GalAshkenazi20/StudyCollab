@@ -242,5 +242,8 @@ interface ApiService {
         @Path("targetGroupId") targetGroupId: String
     ): Response<Map<String, String>>
 
+    // --- FCM Push Token ---
+    @POST("auth/fcm-token")
+    suspend fun registerFcmToken(@Body body: Map<String, String>): Response<Unit>
 
 }

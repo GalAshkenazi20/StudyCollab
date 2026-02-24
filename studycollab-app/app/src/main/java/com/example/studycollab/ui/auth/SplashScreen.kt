@@ -41,12 +41,12 @@ fun SplashScreen(navController: NavController, viewModel: AuthViewModel) {
 
     val currentUser = viewModel.currentUser
 
-    // FIX: Separate initMsal (runs once) from navigation check (runs on currentUser change)
+    //Separate initMsal (runs once) from navigation check (runs on currentUser change)
     LaunchedEffect(Unit) {
         viewModel.initMsal(context)
     }
 
-    // FIX: Watch for login — navigate only once using hasNavigated guard
+    //Watch for login — navigate only once using hasNavigated guard
     LaunchedEffect(currentUser) {
         if (currentUser != null && !hasNavigated) {
             hasNavigated = true
