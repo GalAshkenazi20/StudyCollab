@@ -41,7 +41,7 @@ router.get('/:courseId/students', async (req, res) => {
     try {
         const memberships = await CourseMembership.find({
             courseId: req.params.courseId,
-            role: 'student'  // ADD THIS FILTER — only return students, not lecturers
+            role: 'student'
         }).populate('userId');
 
         const students = memberships.map(m => m.userId).filter(u => u != null);
