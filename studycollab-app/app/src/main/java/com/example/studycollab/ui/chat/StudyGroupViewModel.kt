@@ -20,10 +20,6 @@ class StudyGroupViewModel(
     var errorMessage by mutableStateOf<String?>(null)
     var successMessage by mutableStateOf<String?>(null)
 
-    // --- משתנה חדש לניווט לצ'אט התייעצות ---
-    var consultationNavigationId by mutableStateOf<String?>(null)
-    // --------------------------------------
-
     // Data Lists
     val myGroups = mutableStateListOf<StudyGroup>()
     val myCourses = mutableStateListOf<Course>()
@@ -207,5 +203,54 @@ class StudyGroupViewModel(
                 isLoading = false
             }
         }
+    }
+
+    fun openPeerConsultation(myGroupId: String, targetGroupId: String, targetGroupName: String) {
+        Log.d("PeerNav", "1. Button Clicked! MyGroup: $myGroupId, Target: $targetGroupId")
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                val response = ApiClient.apiService.openPeerConsultation(myGroupId, targetGroupId)
+                Log.d("PeerNav", "2. Backend Response Code: ${response.code()}")
+
+                if (response.isSuccessful && response.body() != null) {
+                    val roomId = response.body()!!["chatRoomId"]
+                    Log.d("PeerNav", "3. Room Resolved: $roomId")
+
+                    // Triggers the LaunchedEffect in the UI
+                    consultationTargetRoute = "chat/peer_consultation/$roomId/$targetGroupName"
+                    Log.d("PeerNav", "4. consultationTargetRoute set to: $consultationTargetRoute")
+                } else {
+                    Log.e("PeerNav", "Error: ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                Log.e("PeerNav", "5. Network Crash", e)
+                errorMessage = "Could not open peer chat."
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    var coursePeerGroups = mutableStateListOf<StudyGroup>()
+        private set
+
+    fun fetchGroupsByCourse(courseId: String) {
+        viewModelScope.launch {
+            try {
+                val response = ApiClient.apiService.getGroupsByCourse(courseId)
+                if (response.isSuccessful && response.body() != null) {
+                    coursePeerGroups.clear()
+                    coursePeerGroups.addAll(response.body()!!)
+                    Log.d("PeerDebug", "Fetched ${coursePeerGroups.size} groups for course $courseId")
+                }
+            } catch (e: Exception) {
+                Log.e("PeerDebug", "Network error: ${e.message}")
+            }
+        }
+    }
+
+    fun clearConsultationRoute() {
+        consultationTargetRoute = null
     }
 }

@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.studycollab.utils.mouseWheelScroll
+import android.util.Log
 
 @Composable
 fun PeerGroupConsultationScreen(
@@ -29,37 +30,91 @@ fun PeerGroupConsultationScreen(
     val listState = rememberLazyListState()
     var visible by remember { mutableStateOf(false) }
 
-    // Logic: In a real app, you would fetch all groups for this courseId.
-    // For now, we filter the groups currently loaded in the ViewModel.
-    val peerGroups = viewModel.myGroups.filter {
-        val sameCourse = it.courseId?.toString()?.filter { char -> char.isLetterOrDigit() } == courseId.filter { char -> char.isLetterOrDigit() }
-        val isNotMe = it._id.toString().filter { char -> char.isLetterOrDigit() } != originGroupId.filter { char -> char.isLetterOrDigit() }
-        sameCourse && isNotMe
+    // 1. Fetch ALL groups in the course when the screen opens
+    LaunchedEffect(courseId) {
+        viewModel.fetchGroupsByCourse(courseId)
+        visible = true
     }
 
-    LaunchedEffect(Unit) { visible = true }
+    // 2. Filter the results from the course-wide list in the ViewModel
+    // Note: We use coursePeerGroups instead of myGroups
+    val peerGroups = viewModel.coursePeerGroups.filter { group ->
 
-    AnimatedVisibility(visible = visible, enter = fadeIn() + slideInVertically { 30 }) {
+        fun getCleanId(id: Any?): String {
+            val str = id.toString().replace("\"", "")
+            return when {
+                str.contains("_id:") -> str.substringAfter("_id:").substringBefore(",").trim()
+                str.contains("\$oid:") -> str.substringAfter("\$oid:").substringBefore("}").trim()
+                else -> str.trim()
+            }
+        }
+
+        val currentGroupId = getCleanId(group._id)
+        val targetOriginGroupId = originGroupId.replace("\"", "").trim()
+
+        // Only exclude the group I am currently in
+        val isNotMe = currentGroupId != targetOriginGroupId
+
+        Log.d("PeerDebug", "Checking Peer: ${group.name} | ID: $currentGroupId vs $targetOriginGroupId | Keep: $isNotMe")
+
+        isNotMe
+    }
+
+    // 3. Handle navigation when the ViewModel resolves a room
+    LaunchedEffect(viewModel.consultationTargetRoute) {
+        viewModel.consultationTargetRoute?.let { route ->
+            Log.d("PeerNav", "Successfully navigating to: $route")
+            navController.navigate(route)
+            viewModel.clearConsultationRoute() // Reset after navigation
+        }
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + slideInVertically { 30 }
+    ) {
         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-            Text(text = "PEER NETWORK", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Text(text = "Course Groups", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Black, letterSpacing = (-1).sp)
+            Text(
+                text = "PEER NETWORK",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Course Groups",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1).sp
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             if (peerGroups.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No other groups found for this course.")
+                    if (viewModel.isLoading) {
+                        CircularProgressIndicator()
+                    } else {
+                        Text("No other groups found for this course.")
+                    }
                 }
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().mouseWheelScroll(listState),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .mouseWheelScroll(listState),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(peerGroups) { group ->
-                        ConsultationGroupCard(group.name ?: "Unnamed Group", group.purpose ?: "") {
-                            // Logic: Navigate to a chat room shared between groups
-                            navController.navigate("chat/group_consultation/${group._id}")
+                        ConsultationGroupCard(
+                            name = group.name ?: "Unnamed Group",
+                            purpose = group.purpose ?: ""
+                        ) {
+                            // Call the resolution logic in ViewModel
+                            viewModel.openPeerConsultation(
+                                myGroupId = originGroupId,
+                                targetGroupId = group._id.toString(),
+                                targetGroupName = group.name ?: "Peer Group"
+                            )
                         }
                     }
                 }

@@ -172,6 +172,33 @@ fun GroupDetailsScreen(
                                 Text("Chat")
                             }
                         }
+
+                        Button(
+                            onClick = {
+                                // 1. Extract the raw course ID string
+                                // If it's a JSON string like the log shows, we need to extract the ID value
+                                val rawCourseId = group.courseId.toString()
+
+                                // 2. Clean it up (Remove JSON brackets and quotes if present)
+                                val cleanCourseId = if (rawCourseId.contains("_id")) {
+                                    // Simple regex/substring to get the ID if it's a JSON block
+                                    rawCourseId.substringAfter("_id\":\"").substringBefore("\"")
+                                } else {
+                                    rawCourseId.replace("\"", "")
+                                }
+
+                                android.util.Log.d("NavDebug", "Navigating to peer_network with CourseID: $cleanCourseId")
+
+                                navController.navigate("peer_network/$cleanCourseId/$cleanGroupId")
+                            },
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Icon(Icons.Default.Groups, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Peers")
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))

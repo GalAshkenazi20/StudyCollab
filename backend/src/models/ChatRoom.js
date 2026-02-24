@@ -2,19 +2,19 @@
 const mongoose = require('mongoose');
 
 const chatRoomSchema = new mongoose.Schema({
-    type: {
-        type: String,
-        enum: ['standard', 'lecturer_consultation', 'course_forum'],
-        required: true
+    type: { 
+        type: String, 
+        enum: ['standard', 'lecturer_consultation', 'peer_group_consultation'], 
+        default: 'standard' 
     },
-    parentGroupId: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'StudyGroup' 
-    },
-    // Stores extra info like the lecturer's name for the header
+    parentGroupId: { type: mongoose.Schema.Types.ObjectId, ref: 'StudyGroup' },
     metadata: {
+        // Lecturer fields
         lecturerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        lecturerName: String
+        lecturerName: { type: String },
+        // Peer fields
+        pairKey: { type: String }, 
+        groupIds: [{ type: String }]
     },
     createdAt: { type: Date, default: Date.now }
 });

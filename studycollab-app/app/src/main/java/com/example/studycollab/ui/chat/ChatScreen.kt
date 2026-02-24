@@ -180,8 +180,13 @@ fun MessageBubble(message: Message, isMe: Boolean) {
         horizontalAlignment = align
     ) {
         if (!isMe) {
+            // ONLY ONE TEXT COMPONENT HERE
             Text(
-                text = message.senderName,
+                text = if (!message.senderGroupName.isNullOrBlank()) {
+                    "${message.senderName} (${message.senderGroupName})"
+                } else {
+                    message.senderName
+                },
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
