@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
+
 const Assignment = require("../models/Assignment");
+const CourseMembership = require("../models/CourseMembership");
+const Notification = require("../models/Notification");
 
 const multer = require("multer");
-const path = require("path");
 const fs = require("fs");
 
 const uploadDir = "uploads/assignments/";
@@ -18,7 +20,34 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// POST /api/assignments/upload — Create assignment with file upload
+async function notifyStudentsAboutAssignment({ courseId, title, dueAt, assignmentId }) {
+  // חשוב: אם יש לך סטטוס בקורסים, כדאי לסנן active
+  const memberships = await CourseMembership.find({
+    courseId,
+    role: "student",
+    status: "active",
+  });
+
+  const notifications = memberships.map((m) => ({
+    userId: m.userId,
+    title: "New Assignment",
+    message: `New assignment: "${title}" - Due: ${new Date(dueAt).toLocaleDateString()}`,
+    type: "new_assignment",
+    relatedId: assignmentId,
+    dedupeKey: `new_assignment_${assignmentId}_${m.userId}`,
+  }));
+
+  if (notifications.length > 0) {
+    await Notification.insertMany(notifications, { ordered: false }).catch((e) => {
+      console.error("insertMany notifications:", e.message || e);
+    });
+  }
+}
+
+/**
+ * POST /api/assignments/upload
+ * Create assignment WITH file upload + notify all students in course
+ */
 router.post("/upload", upload.single("file"), async (req, res) => {
   try {
     const newAssignment = new Assignment({
@@ -29,67 +58,64 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       dueAt: req.body.dueAt,
       createdBy: req.body.creatorId,
     });
+
     await newAssignment.save();
+
+    await notifyStudentsAboutAssignment({
+      courseId: newAssignment.courseId,
+      title: newAssignment.title,
+      dueAt: newAssignment.dueAt,
+      assignmentId: newAssignment._id,
+    });
+
     res.status(201).json(newAssignment);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Failed to create assignment", error: error.message });
+    res.status(500).json({ message: "Failed to create assignment", error: error.message });
   }
 });
 
-// 1. Create a course assignment (Lecturer)
+/**
+ * POST /api/assignments
+ * Create assignment WITHOUT upload (fileUrl optional) + notify all students
+ */
 router.post("/", async (req, res) => {
   try {
-    const { courseId, title, description, fileUrl, dueAt, creatorId } =
-      req.body;
+    const { courseId, title, description, fileUrl, dueAt, creatorId } = req.body;
+
     const newAssignment = new Assignment({
       courseId,
       title,
-      description,
-      fileUrl,
+      description: description || "",
+      fileUrl: fileUrl || null,
       dueAt,
       createdBy: creatorId,
     });
-    await newAssignment.save();
-    // After saving the assignment, notify all students in the course
-    const CourseMembership = require("../models/CourseMembership");
-    const Notification = require("../models/Notification");
 
-    const memberships = await CourseMembership.find({
-      courseId,
-      role: "student",
+    await newAssignment.save();
+
+    await notifyStudentsAboutAssignment({
+      courseId: newAssignment.courseId,
+      title: newAssignment.title,
+      dueAt: newAssignment.dueAt,
+      assignmentId: newAssignment._id,
     });
-    const notifications = memberships.map((m) => ({
-      userId: m.userId,
-      title: "New Assignment",
-      message: `New assignment: "${title}" - Due: ${new Date(dueAt).toLocaleDateString()}`,
-      type: "new_assignment",
-      relatedId: newAssignment._id,
-      dedupeKey: `new_assignment_${newAssignment._id}_${m.userId}`,
-    }));
-    if (notifications.length > 0) {
-      await Notification.insertMany(notifications, { ordered: false }).catch(
-        (e) => console.error(e),
-      );
-    }
+
     res.status(201).json(newAssignment);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Failed to create assignment", error: error.message });
+    res.status(500).json({ message: "Failed to create assignment", error: error.message });
   }
 });
 
-// 2. Get all assignments for a course
+/**
+ * GET /api/assignments/course/:courseId
+ * Get all assignments for course
+ */
 router.get("/course/:courseId", async (req, res) => {
   try {
-    const assignments = await Assignment.find({
-      courseId: req.params.courseId,
-    }).sort({ dueAt: 1 });
+    const assignments = await Assignment.find({ courseId: req.params.courseId }).sort({ dueAt: 1 });
     res.json(assignments);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch assignments" });
+    res.status(500).json({ message: "Failed to fetch assignments", error: error.message });
   }
 });
 

@@ -56,6 +56,7 @@ app.use('/api/group-work', groupWorkRouter);
 app.use('/api/office-hours', officeHoursRouter); // Added for scheduler/booking
 app.use('/api/submissions', submissionsRouter); // Added for grading
 app.use('/api/materials', materialsRouter);     // Added for course slides/notes
+app.use("/uploads", express.static("uploads"));
 
 // Run deadline reminders every hour
 const checkDeadlines = require('./src/jobs/deadlineReminder');
