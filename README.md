@@ -78,4 +78,4 @@ npm run dev                 # starts the API on http://localhost:3000
 
 Built by a team of three: [@Eladi24](https://github.com/Eladi24), [@adirofir123](https://github.com/adirofir123) and [@GalAshkenazi20](https://github.com/GalAshkenazi20).
 
-My contributions (Gal): study groups and chat, the timetable, push notifications, and university data seeding for the database.
+My contributions (Gal): study groups and chat (backend routes, Mongoose models and Android screens), the weekly timetable, notification triggers for messages and submissions, and extending the university seed data.
